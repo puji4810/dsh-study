@@ -1,0 +1,9 @@
+node_modules/
+packages/*/node_modules/
+packages/*/lib/
+coverage/
+*.tsbuildinfo
+*.tgz
+.npm/
+npm-debug.log*
+pnpm-debug.log*

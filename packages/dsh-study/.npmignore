@@ -1,0 +1,10 @@
+src/
+tests/
+scripts/
+generated/
+coverage/
+node_modules/
+tsconfig*.json
+tsdown*.ts
+*.tsbuildinfo
+*.tgz

@@ -1,0 +1,15 @@
+{
+  "name": "dsh-study-repository",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "build": "pnpm --dir packages/dsh-study run build",
+    "typecheck": "pnpm --dir packages/dsh-study run typecheck",
+    "test": "pnpm --dir packages/dsh-study run test",
+    "pack:check": "npm pack --workspace @puji4810/dsh-study --dry-run",
+    "publish:package": "npm publish --workspace @puji4810/dsh-study --access public"
+  },
+  "engines": { "node": "^22.19.0 || >=24.0.0" },
+  "packageManager": "pnpm@11.7.0"
+}
