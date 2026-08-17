@@ -231,6 +231,10 @@ export function buildPlanAdherence(options: {
       for (let index = 0; index < dayAttempts.length; index += 1) {
         if (claimed.has(index)) continue
         const entry = dayAttempts[index]!
+        if (event.source_intervention_id) {
+          if ((entry.attempt.source_plan_proposal_id ?? '') !== event.source_plan_proposal_id) continue
+          if ((entry.attempt.source_intervention_id ?? '') !== event.source_intervention_id) continue
+        }
         if (String(entry.attempt.transfer_level ?? '') !== event.evidence_dimension) continue
         if (!objectiveIds(entry.attempt).has(event.objective_id)) continue
         claimed.add(index)

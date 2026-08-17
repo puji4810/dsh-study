@@ -1,7 +1,6 @@
 /**
  * StudyOS prompt-operation guides. Each intent maps to the exact operation shapes the
- * Python plugin discloses with a selected workflow; the data mirrors `tools.py` verbatim
- * so every model-facing guide string stays byte-identical.
+ * selected workflow, including the TypeScript plugin's constrained scheduling controls.
  * @module @puji4810/dsh-study/guides
  */
 
@@ -20,8 +19,22 @@ export const PROMPT_OPERATION_GUIDES: Readonly<Record<string, ReadonlyArray<Read
       data: 'complete study_schedule.v1 object returned from template',
     },
     {
+      tool: 'study_coach',
+      action: 'prioritize|propose_plan',
+      data_fields: [
+        'max_items?',
+        'as_of?',
+        'scheduling?{target_date?,windows?[],busy?[],break_minutes?,max_minutes?,allow_duration_adjustment?,min_duration_minutes?,intervention_order?[],defer_intervention_ids?[],placements?[]}',
+      ],
+    },
+    {
       tool: 'study_activity',
       operation: 'plan_proposal.ensure_today|list|read|save|accept|reject|apply',
+    },
+    {
+      tool: 'study_coach',
+      action: 'start_intervention',
+      data_fields: ['proposal_id', 'intervention_id', 'session_id?', 'execution?{time_budget_minutes?,assistance_level?}'],
     },
   ],
   schedule_adjustment: [
@@ -31,6 +44,11 @@ export const PROMPT_OPERATION_GUIDES: Readonly<Record<string, ReadonlyArray<Read
       tool: 'study_activity',
       operation: 'schedule.validate|save',
       data: 'complete study_schedule.v1 object',
+    },
+    {
+      tool: 'study_coach',
+      action: 'prioritize|propose_plan',
+      data_fields: ['scheduling?{target_date?,windows?[],busy?[],break_minutes?,max_minutes?,allow_duration_adjustment?,min_duration_minutes?,intervention_order?[],defer_intervention_ids?[],placements?[]}'],
     },
   ],
   organizing: [
@@ -94,6 +112,11 @@ export const PROMPT_OPERATION_GUIDES: Readonly<Record<string, ReadonlyArray<Read
         'session_id',
         'contract{mode,objective,time_budget_minutes,assistance_level,evidence_targets,objective_ids?}',
       ],
+    },
+    {
+      tool: 'study_coach',
+      action: 'start_intervention',
+      data_fields: ['proposal_id', 'intervention_id', 'session_id?', 'execution?{time_budget_minutes?,assistance_level?}'],
     },
     {
       tool: 'study_coach',

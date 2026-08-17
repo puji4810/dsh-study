@@ -499,9 +499,17 @@ or save a Schedule.
    curriculum first.
 2. Map observable objectives, prerequisites, sources, time, and a checkpoint.
    Never invent dates, scores, or availability; keep topic names stable.
-3. For advice, “how should I plan?”, or an explicit draft, return a compact
-   draft without mutation. An imperative request to create, complete, update,
-   register, or add a **StudyOS** plan/calendar authorizes persistence.
+3. For advice, “how should I plan?”, or an explicit draft, call
+   \`study_coach.propose_plan\` and return a compact preview without mutation;
+   use \`study_coach.prioritize\` when the learner only wants ranked next actions.
+   Keep the evidence-derived queue intact, but pass known availability through
+   \`data.scheduling\`. The learner or agent may set local \`windows\`, \`busy\`
+   periods, a daily cap and break, permit bounded duration fitting, or — after
+   reading \`prioritize\` — reorder, defer, and place specific Intervention ids.
+   Re-run the read-only proposal to compare alternatives instead of hand-editing
+   evidence reasons or priority scores.
+   An imperative request to create, complete, update, register, or add a
+   **StudyOS** plan/calendar authorizes persistence.
 4. Missing daily time slots never block a long-term Schedule: save dated
    \`phases\` with \`events: []\` and add events only when times are known.
 5. Do not end with “I will register it next.” Continue in the same turn
@@ -519,6 +527,13 @@ List pending proposals before saving one. Only an explicit learner decision
 permits accept/reject. Apply an accepted proposal with \`plan_proposal.apply\`,
 which writes its day-plan events and nothing else. Changing \`phases\` or \`range\`
 is still \`schedule.validate\` then \`schedule.save\`.
+
+Execute an accepted item with \`study_coach.start_intervention\`; it derives the
+Session contract from the durable proposal and carries proposal/intervention
+provenance into every recorded attempt. It consumes the concrete day-plan event
+duration when present. \`data.execution\` may override only time budget and
+assistance level; it may not replace the objective, evidence target, or provenance.
+Do not rebuild that contract by hand.
 <!-- prompt-context:end -->
 
 ## Reference
@@ -565,6 +580,12 @@ Use \`study_coach.prioritize\` to rank a project-wide Intervention Queue and
 \`study_coach.propose_plan\` to produce a read-only Plan Proposal. Proposals are
 stored through \`study_activity\` with \`resource="plan_proposal"\`, which supports
 \`save\`, \`list\`, \`read\`, \`accept\`, and \`reject\`.
+
+\`propose_plan.data.scheduling\` may provide \`target_date\`, local \`windows\`,
+\`busy\` periods, \`break_minutes\`, \`max_minutes\`, bounded duration adjustment,
+and Intervention-specific order/defer/placement hints. Existing Schedule events
+remain hard conflicts. \`ensure_today\` accepts the same controls but never a
+different target date.
 
 Acceptance records a decision and never mutates a Schedule on its own. Cron
 sessions may save proposals but can never decide them or save Schedules.

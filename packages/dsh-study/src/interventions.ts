@@ -1,8 +1,7 @@
 /**
  * StudyOS intervention orchestration: derive a bounded next-action queue from
- * evidence, then project it into a day plan and a reviewable proposal. Mirrors
- * the Python plugin's `interventions.py` rule for rule; persistence and
- * Schedule mutation stay outside this module.
+ * evidence, then project it into a configurable day plan and reviewable proposal;
+ * persistence and Schedule mutation stay outside this module.
  * @module @puji4810/dsh-study/interventions
  */
 
@@ -26,6 +25,7 @@ import { buildDayPlan } from './day-plan.ts'
 import { calibratedDuration, capacityFactor, outcomeAdjustment } from './calibration.ts'
 import type {
   DayPlan,
+  DayPlanPreferences,
   Diagnosis,
   DiagnosisCluster,
   InterventionItem,
@@ -345,6 +345,7 @@ export class InterventionOrchestrator {
     schedules?: StudyData[] | null
     outcomes?: Record<string, unknown> | null
     adherence?: Record<string, unknown> | null
+    scheduling?: DayPlanPreferences | null
   }): { queue: InterventionQueue; dayPlan: DayPlan | null; proposal: PlanProposal | null } {
     const { attempts, asOf } = options
     const maxItems = options.maxItems ?? 5
@@ -353,6 +354,7 @@ export class InterventionOrchestrator {
     }
     const timeZone = projectTimezone(this.project)
     const asOfDate = localDate(asOf, timeZone)
+    const targetDate = options.scheduling?.target_date ?? asOfDate
 
     const deadlineInfo = deadlineState(this.project, asOf, timeZone)
     const { views, unscoped, deferred } = objectiveViews(this.project, attempts, asOfDate)
@@ -532,10 +534,11 @@ export class InterventionOrchestrator {
           schedules: options.schedules ?? [],
           attempts,
           project: this.project,
-          target: asOfDate,
+          target: targetDate,
           timeZone,
           now: asOf,
           capacity: capacityFactor(options.adherence ?? null),
+          ...(options.scheduling === undefined ? {} : { preferences: options.scheduling }),
         })
         : null
     return {
@@ -575,8 +578,10 @@ export class InterventionOrchestrator {
       for (const event of entry.events) {
         placed.push({
           id: event.id,
+          schedule_id: entry.schedule_id,
           start: event.start,
           end: event.end,
+          duration_minutes: event.duration_minutes,
           source_intervention_id: event.source_intervention_id,
         })
       }
@@ -586,7 +591,14 @@ export class InterventionOrchestrator {
       project_id: project.project_id,
       project_title: project.title,
       items: semanticItems,
-      day_plan: placed.length > 0 ? { target_date: dayPlan?.target_date, events: placed } : null,
+      day_plan: dayPlan === null || dayPlan === undefined
+        ? null
+        : {
+            target_date: dayPlan.target_date,
+            events: placed,
+            unplaced: (dayPlan.unplaced ?? []).map(item => ({ intervention_id: item.intervention_id, reason: item.reason })),
+            scheduling: dayPlan.scheduling ?? null,
+          },
     })
   }
 

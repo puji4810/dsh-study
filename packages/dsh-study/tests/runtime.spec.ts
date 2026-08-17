@@ -110,6 +110,10 @@ function runtimeSetup(overrides: {
         session_id: String(args['session_id']),
         objective_ids: args['objective_ids'] as string[],
         source_anchors: args['source_anchors'] as never,
+        activity_kind: String(args['activity_kind'] ?? ''),
+        intervention_kind: args['intervention_kind'] as never,
+        source_plan_proposal_id: args['source_plan_proposal_id'] as string | undefined,
+        source_intervention_id: args['source_intervention_id'] as string | undefined,
       } as StudyAttempt
       store.attempts.push(attempt)
       return { ok: true, data: { attempt } }
@@ -193,6 +197,30 @@ describe('LearningRuntime.start', () => {
     const { runtime } = runtimeSetup()
     expect(() => runtime.start({ sessionId: 'session-1', contract: { ...validContract, project_id: 'other-project' } }))
       .toThrowError(/project_id must match project manifest/)
+  })
+
+  it('turns accepted-plan provenance into the activity and recorded attempt', () => {
+    const { runtime, store } = runtimeSetup()
+    const plannedContract = {
+      ...validContract,
+      intervention_kind: 'guided_repair',
+      source_plan_proposal_id: 'plan-accepted-1',
+      source_intervention_id: 'iv-guided-1',
+    }
+    const started = runtime.start({ sessionId: 'session-plan', contract: plannedContract })
+    expect(started['next_activity']).toMatchObject({
+      kind: 'guided_repair',
+      intervention_kind: 'guided_repair',
+      source_plan_proposal_id: 'plan-accepted-1',
+      source_intervention_id: 'iv-guided-1',
+    })
+    runtime.advance({ sessionId: 'session-plan', observation })
+    expect(store.attempts[0]).toMatchObject({
+      activity_kind: 'guided_repair',
+      intervention_kind: 'guided_repair',
+      source_plan_proposal_id: 'plan-accepted-1',
+      source_intervention_id: 'iv-guided-1',
+    })
   })
 })
 

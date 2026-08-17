@@ -123,6 +123,59 @@ export interface StudyDashboardOverview {
   calendar: StudyDashboardCalendar
 }
 
+/** Dashboard request for a read-only, evidence-derived Plan Proposal preview. */
+export interface StudyDashboardPlanRequest {
+  projectId: string
+  maxItems?: number
+  asOf?: string
+  scheduling?: DayPlanPreferences
+}
+
+/** Read-only plan preview returned to the Dashboard. */
+export interface StudyDashboardPlanPreview {
+  projectId: string
+  interventionQueue: InterventionQueue
+  proposal: PlanProposal | null
+}
+
+/** Persist one previewed proposal without deciding it. */
+export interface StudyDashboardPlanSaveRequest {
+  projectId: string
+  proposal: PlanProposal
+}
+
+export interface StudyDashboardPlanSaveResult {
+  proposal: PlanProposal
+  created: boolean
+  path: string
+}
+
+/** Explicit learner decision made from the Dashboard. */
+export interface StudyDashboardPlanDecisionRequest {
+  projectId: string
+  proposalId: string
+  decision: 'accept' | 'reject'
+  note?: string
+}
+
+export interface StudyDashboardPlanDecisionResult {
+  proposal: PlanProposal
+  changed: boolean
+}
+
+/** Apply the accepted day-plan events to their Schedules. */
+export interface StudyDashboardPlanApplyRequest {
+  projectId: string
+  proposalId: string
+}
+
+export interface StudyDashboardPlanApplyResult {
+  proposalId: string
+  targetDate: string
+  appliedScheduleCount: number
+  appliedEventCount: number
+}
+
 /** Version-aware reference to the exact source location supporting an activity or claim. */
 export interface StudySourceAnchor {
   kind: SourceAnchorKind
@@ -289,6 +342,11 @@ export interface StudyAttempt {
   source_anchors?: StudySourceAnchor[]
   artifact_refs?: string[]
   activity_kind?: string
+  /** The recommender intervention this attempt actually executed. */
+  intervention_kind?: InterventionKind
+  /** Durable proposal provenance for intervention-effect measurement. */
+  source_plan_proposal_id?: string
+  source_intervention_id?: string
   source?: string
   session_id?: string
   revision_of?: string
@@ -305,6 +363,10 @@ export interface LearningContract {
   time_budget_minutes: number
   objective_ids?: string[]
   evidence_targets: EvidenceDimension[]
+  /** Present when the Session executes an accepted Plan Proposal item. */
+  intervention_kind?: InterventionKind
+  source_plan_proposal_id?: string
+  source_intervention_id?: string
   created_at: string
 }
 
@@ -476,6 +538,53 @@ export interface DayPlanEvent {
   source_objective_id: string
   evidence_dimension: string
   routing: string
+  /** The evidence-calibrated duration before a scheduling override or fit adjustment. */
+  recommended_duration_minutes?: number
+  /** Why the concrete event duration differs (or not) from the recommendation. */
+  duration_source?: 'recommended' | 'placement_override' | 'adaptive_fit'
+}
+
+/** One local wall-clock interval on the day being planned. End is exclusive. */
+export interface DayPlanTimeWindow {
+  start: string
+  end: string
+}
+
+/** Agent/user guidance for one Intervention after the evidence queue is derived. */
+export interface DayPlanPlacementPreference {
+  intervention_id: string
+  schedule_id?: string
+  start_time?: string
+  duration_minutes?: number
+}
+
+/** Optional scheduling freedom layered over the evidence-derived recommendations. */
+export interface DayPlanPreferences {
+  target_date?: string
+  windows?: DayPlanTimeWindow[]
+  busy?: DayPlanTimeWindow[]
+  break_minutes?: number
+  max_minutes?: number
+  allow_duration_adjustment?: boolean
+  min_duration_minutes?: number
+  intervention_order?: string[]
+  defer_intervention_ids?: string[]
+  placements?: DayPlanPlacementPreference[]
+}
+
+/** Normalized scheduling inputs recorded on the resulting day plan. */
+export interface DayPlanScheduling {
+  mode: 'automatic' | 'custom'
+  windows: DayPlanTimeWindow[]
+  busy: DayPlanTimeWindow[]
+  break_minutes: number
+  max_minutes: number | null
+  allow_duration_adjustment: boolean
+  min_duration_minutes: number
+  intervention_order: string[]
+  defer_intervention_ids: string[]
+  placements: DayPlanPlacementPreference[]
+  existing_event_conflicts: number
 }
 
 export interface DayPlanScheduleEntry {
@@ -500,6 +609,7 @@ export interface DayPlan {
     sample_size: number
     coverage: number | null
   }
+  scheduling?: DayPlanScheduling
   capacity: Record<string, unknown> | null
   minutes_budget: number
   minutes_budget_nominal: number

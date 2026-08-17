@@ -508,6 +508,23 @@ export function validateStudyAttempt(data: unknown): ValidationResult {
   if (record.transfer_level !== undefined && record.transfer_level !== null) {
     needEnum(errors, record.transfer_level, 'transfer_level', EVIDENCE_DIMENSIONS)
   }
+  if (record.intervention_kind !== undefined && record.intervention_kind !== null) {
+    needEnum(errors, record.intervention_kind, 'intervention_kind', INTERVENTION_KINDS)
+  }
+  for (const key of ['source_plan_proposal_id', 'source_intervention_id']) {
+    if (record[key] !== undefined && record[key] !== null) {
+      const value = needString(errors, record, key, key)
+      if (value !== null && !SCHEDULE_ID_RE.test(value)) {
+        errors.push(`${key} must match ${SCHEDULE_ID_PATTERN}`)
+      }
+    }
+  }
+  const attemptProvenanceFields = ['intervention_kind', 'source_plan_proposal_id', 'source_intervention_id']
+  const attemptProvenanceCount = attemptProvenanceFields
+    .filter(key => record[key] !== undefined && record[key] !== null).length
+  if (attemptProvenanceCount !== 0 && attemptProvenanceCount !== attemptProvenanceFields.length) {
+    errors.push('intervention_kind, source_plan_proposal_id, and source_intervention_id must be provided together')
+  }
   for (const key of ['concepts', 'patterns', 'objective_ids']) {
     if (record[key] !== undefined && record[key] !== null) {
       needStringArray(errors, record[key], key)
@@ -626,6 +643,22 @@ export function validateLearningContract(data: unknown, project?: StudyData): Va
       }
     }
   }
+  const provenanceFields = ['intervention_kind', 'source_plan_proposal_id', 'source_intervention_id']
+  const provenanceCount = provenanceFields.filter(key => record[key] !== undefined && record[key] !== null).length
+  if (provenanceCount !== 0 && provenanceCount !== provenanceFields.length) {
+    errors.push('intervention_kind, source_plan_proposal_id, and source_intervention_id must be provided together')
+  }
+  if (record.intervention_kind !== undefined && record.intervention_kind !== null) {
+    needEnum(errors, record.intervention_kind, 'intervention_kind', INTERVENTION_KINDS)
+  }
+  for (const key of ['source_plan_proposal_id', 'source_intervention_id']) {
+    if (record[key] !== undefined && record[key] !== null) {
+      const value = needString(errors, record, key, key)
+      if (value !== null && !SCHEDULE_ID_RE.test(value)) {
+        errors.push(`${key} must match ${SCHEDULE_ID_PATTERN}`)
+      }
+    }
+  }
   needOffsetDatetime(errors, record.created_at, 'created_at')
   return errors.length > 0 ? { ok: false, errors } : { ok: true, value: record }
 }
@@ -731,6 +764,8 @@ function validateDayPlanEvents(
   path: string,
   interventionIds: Set<string>,
   seenEventIds: Set<string>,
+  seenInterventionEvents: Set<string>,
+  occupied: Array<{ id: string; start: Date; end: Date }>,
 ): void {
   const entry = requireObject(errors, value, path)
   if (entry === null) return
@@ -760,14 +795,138 @@ function validateDayPlanEvents(
         errors.push(`${eventPath}.duration_minutes does not match start/end`)
       }
     }
+    if (start !== null && end !== null && end > start) {
+      for (const prior of occupied) {
+        if (start < prior.end && end > prior.start) {
+          errors.push(`${eventPath} overlaps day-plan event ${prior.id}`)
+        }
+      }
+      occupied.push({ id: String(item.id ?? eventPath), start, end })
+    }
+    if (
+      item.recommended_duration_minutes !== undefined
+      && item.recommended_duration_minutes !== null
+      && (!isPositiveInt(item.recommended_duration_minutes) || item.recommended_duration_minutes > 720)
+    ) {
+      errors.push(`${eventPath}.recommended_duration_minutes must be an integer from 1 to 720`)
+    }
+    if (
+      item.duration_source !== undefined
+      && item.duration_source !== null
+      && !['recommended', 'placement_override', 'adaptive_fit'].includes(String(item.duration_source))
+    ) {
+      errors.push(`${eventPath}.duration_source must be recommended, placement_override, or adaptive_fit`)
+    }
     needStringArray(errors, item.goals, `${eventPath}.goals`, { nonEmpty: true })
     const source = item.source_intervention_id
     if (typeof source !== 'string' || !source.trim()) {
       errors.push(`${eventPath}.source_intervention_id must be a non-empty string`)
     } else if (interventionIds.size > 0 && !interventionIds.has(source)) {
       errors.push(`${eventPath}.source_intervention_id must reference an Intervention in this proposal`)
+    } else if (seenInterventionEvents.has(source)) {
+      errors.push(`${eventPath}.source_intervention_id must appear at most once in the day plan`)
+    } else {
+      seenInterventionEvents.add(source)
     }
   })
+}
+
+function dayPlanClockMinutes(value: unknown, allowEndOfDay = false): number | null {
+  if (typeof value !== 'string') return null
+  const match = /^(\d{2}):(\d{2})$/.exec(value)
+  if (match === null) return null
+  const hour = Number(match[1])
+  const minute = Number(match[2])
+  if (allowEndOfDay && hour === 24 && minute === 0) return 1440
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null
+  return hour * 60 + minute
+}
+
+function validateDayPlanTimeWindows(errors: string[], value: unknown, path: string, nonEmpty = true): void {
+  const windows = requireArray(errors, value, path)
+  if (nonEmpty && windows !== null && windows.length === 0) errors.push(`${path} must be a non-empty array`)
+  windows?.forEach((candidate, index) => {
+    const itemPath = `${path}[${index}]`
+    const window = requireObject(errors, candidate, itemPath)
+    if (window === null) return
+    const start = dayPlanClockMinutes(window.start)
+    const end = dayPlanClockMinutes(window.end, true)
+    if (start === null || end === null || end <= start) {
+      errors.push(`${itemPath} must use same-day HH:MM values with end after start`)
+    }
+  })
+}
+
+function validateDayPlanScheduling(errors: string[], value: unknown, interventionIds: Set<string>): void {
+  const scheduling = requireObject(errors, value, 'day_plan.scheduling')
+  if (scheduling === null) return
+  if (scheduling.mode !== 'automatic' && scheduling.mode !== 'custom') {
+    errors.push('day_plan.scheduling.mode must be automatic or custom')
+  }
+  validateDayPlanTimeWindows(errors, scheduling.windows, 'day_plan.scheduling.windows')
+  validateDayPlanTimeWindows(errors, scheduling.busy, 'day_plan.scheduling.busy', false)
+  if (!isNonNegativeInt(scheduling.break_minutes) || Number(scheduling.break_minutes) > 120) {
+    errors.push('day_plan.scheduling.break_minutes must be an integer from 0 to 120')
+  }
+  if (
+    scheduling.max_minutes !== null
+    && scheduling.max_minutes !== undefined
+    && (!isPositiveInt(scheduling.max_minutes) || Number(scheduling.max_minutes) > 1440)
+  ) {
+    errors.push('day_plan.scheduling.max_minutes must be null or an integer from 1 to 1440')
+  }
+  if (typeof scheduling.allow_duration_adjustment !== 'boolean') {
+    errors.push('day_plan.scheduling.allow_duration_adjustment must be a boolean')
+  }
+  if (!isPositiveInt(scheduling.min_duration_minutes) || Number(scheduling.min_duration_minutes) > 720) {
+    errors.push('day_plan.scheduling.min_duration_minutes must be an integer from 1 to 720')
+  }
+  for (const key of ['intervention_order', 'defer_intervention_ids']) {
+    const ids = needStringArray(errors, scheduling[key], `day_plan.scheduling.${key}`)
+    if (ids !== null && ids.length !== new Set(ids).size) {
+      errors.push(`day_plan.scheduling.${key} must not contain duplicates`)
+    }
+    if (ids !== null) {
+      for (const interventionId of ids) {
+        if (!interventionIds.has(interventionId)) {
+          errors.push(`day_plan.scheduling.${key} must reference an Intervention in this proposal: ${interventionId}`)
+        }
+      }
+    }
+  }
+  const placements = requireArray(errors, scheduling.placements, 'day_plan.scheduling.placements')
+  const placementIds: string[] = []
+  placements?.forEach((candidate, index) => {
+    const path = `day_plan.scheduling.placements[${index}]`
+    const placement = requireObject(errors, candidate, path)
+    if (placement === null) return
+    const interventionId = needString(errors, placement, 'intervention_id', `${path}.intervention_id`)
+    if (interventionId !== null) {
+      placementIds.push(interventionId)
+      if (!interventionIds.has(interventionId)) {
+        errors.push(`${path}.intervention_id must reference an Intervention in this proposal`)
+      }
+    }
+    if (placement.schedule_id !== undefined && placement.schedule_id !== null) {
+      needString(errors, placement, 'schedule_id', `${path}.schedule_id`)
+    }
+    if (placement.start_time !== undefined && placement.start_time !== null && dayPlanClockMinutes(placement.start_time) === null) {
+      errors.push(`${path}.start_time must be HH:MM`)
+    }
+    if (
+      placement.duration_minutes !== undefined
+      && placement.duration_minutes !== null
+      && (!isPositiveInt(placement.duration_minutes) || Number(placement.duration_minutes) > 720)
+    ) {
+      errors.push(`${path}.duration_minutes must be an integer from 1 to 720`)
+    }
+  })
+  if (placementIds.length !== new Set(placementIds).size) {
+    errors.push('day_plan.scheduling.placements must not repeat an intervention_id')
+  }
+  if (!isNonNegativeInt(scheduling.existing_event_conflicts)) {
+    errors.push('day_plan.scheduling.existing_event_conflicts must be a non-negative integer')
+  }
 }
 
 /**
@@ -839,9 +998,22 @@ export function validatePlanProposal(data: unknown): ValidationResult {
       }
       const entries = requireArray(errors, plan.schedules, 'day_plan.schedules')
       const seenEventIds = new Set<string>()
+      const seenInterventionEvents = new Set<string>()
+      const occupied: Array<{ id: string; start: Date; end: Date }> = []
       entries?.forEach((entry, index) => {
-        validateDayPlanEvents(errors, entry, `day_plan.schedules[${index}]`, seenInterventionIds, seenEventIds)
+        validateDayPlanEvents(
+          errors,
+          entry,
+          `day_plan.schedules[${index}]`,
+          seenInterventionIds,
+          seenEventIds,
+          seenInterventionEvents,
+          occupied,
+        )
       })
+      if (plan.scheduling !== undefined && plan.scheduling !== null) {
+        validateDayPlanScheduling(errors, plan.scheduling, seenInterventionIds)
+      }
     }
   }
 

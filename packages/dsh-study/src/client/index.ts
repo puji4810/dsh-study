@@ -5,7 +5,14 @@ import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import studyosRemote from '@puji4810/dsh-study/remote'
-import type { StudyDashboardOverview } from '@puji4810/dsh-study/types'
+import type {
+  PlanProposal,
+  StudyDashboardOverview,
+  StudyDashboardPlanApplyResult,
+  StudyDashboardPlanDecisionResult,
+  StudyDashboardPlanPreview,
+  StudyDashboardPlanSaveResult,
+} from '@puji4810/dsh-study/types'
 import type { StudyOSPanelFace } from './slots.ts'
 import { StudyOSPanel } from './StudyOSPanel.tsx'
 import { en, NS, zh } from './locales.ts'
@@ -25,6 +32,10 @@ function registerPanel(ctx: ClientContext): void {
     if (!result.ok) throw new Error(`${result.error.code}: ${result.error.message}`)
     return result.value
   }
+  const unwrapValue = <T,>(result: { ok: true; value: T } | { ok: false; error: { code: string; message: string } }): T => {
+    if (!result.ok) throw new Error(`${result.error.code}: ${result.error.message}`)
+    return result.value
+  }
   ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
     name: 'sidebar.footer.action',
     id: 'studyos-panel',
@@ -34,6 +45,16 @@ function registerPanel(ctx: ClientContext): void {
       load: async sessionId => unwrap(await ctx.remote.studyos.overview(sessionId)),
       selectProject: async (sessionId, projectId) =>
         unwrap(await ctx.remote.studyos.selectProject(sessionId, projectId)),
+      previewPlan: async (sessionId, request): Promise<StudyDashboardPlanPreview> =>
+        unwrapValue(await ctx.remote.studyos.previewPlan(sessionId, request)),
+      latestPlan: async (sessionId, projectId): Promise<PlanProposal | null> =>
+        unwrapValue(await ctx.remote.studyos.latestPlan(sessionId, projectId)),
+      savePlan: async (sessionId, request): Promise<StudyDashboardPlanSaveResult> =>
+        unwrapValue(await ctx.remote.studyos.savePlan(sessionId, request)),
+      decidePlan: async (sessionId, request): Promise<StudyDashboardPlanDecisionResult> =>
+        unwrapValue(await ctx.remote.studyos.decidePlan(sessionId, request)),
+      applyPlan: async (sessionId, request): Promise<StudyDashboardPlanApplyResult> =>
+        unwrapValue(await ctx.remote.studyos.applyPlan(sessionId, request)),
     }),
   }, StudyOSPanel))
 }

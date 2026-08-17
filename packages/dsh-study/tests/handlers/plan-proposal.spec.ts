@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { handlePlanProposalActivity } from '../../src/handlers/plan-proposal.ts'
 import { interventionOrchestration } from '../../src/handlers/coach.ts'
 import { InterventionOrchestrator } from '../../src/interventions.ts'
-import type { DayPlan, InterventionItem, StudyData, StudyProject } from '../../src/types.ts'
-import { env, tempVault, writeProject } from '../helpers.ts'
+import type { DayPlan, InterventionItem, StudyData, StudyProject, StudySchedule } from '../../src/types.ts'
+import { env, scheduledEvent, tempVault, writeProject, writeSchedule } from '../helpers.ts'
 
 const iso = '2026-01-15T08:00:00Z'
 
@@ -142,6 +142,104 @@ describe('handlePlanProposalActivity', () => {
     if (!result.ok) expect(result.error.code).toBe('PROPOSAL_NOT_ACCEPTED')
   })
 
+  it('preflights every target before mutating any Schedule', async () => {
+    const vault = tempVault()
+    writeProject(vault, 'demo-project')
+    const schedule: StudySchedule = {
+      schema_version: 'study_schedule.v1',
+      schedule_id: 'schedule-one',
+      project_id: 'demo-project',
+      title: 'Schedule One',
+      timezone: 'UTC',
+      range: { start: '2026-01-01', end: '2026-01-31' },
+      phases: [{ id: 'phase-one', title: 'Phase One', start: '2026-01-01', end: '2026-01-31', goal: 'Learn' }],
+      events: [],
+    }
+    writeSchedule(vault, 'demo-project', schedule)
+    const { proposal, project } = await deriveProposal(vault)
+    const item = (proposal['items'] as InterventionItem[])[0]!
+    const secondItem: InterventionItem = { ...item, intervention_id: 'iv-second-target' }
+    const event = (source: InterventionItem, id: string, start: string) => ({
+      id,
+      title: 'Planned intervention',
+      subject_id: 't1',
+      type: source.kind,
+      status: 'planned',
+      start,
+      end: start.replace('08:00:00', '08:30:00').replace('09:00:00', '09:30:00'),
+      duration_minutes: 30,
+      goals: ['produce evidence'],
+      source_intervention_id: source.intervention_id,
+      source_objective_id: source.objective_id,
+      evidence_dimension: source.evidence_dimension,
+      routing: 'test',
+    })
+    const dayPlan = {
+      schema_version: 'study_day_plan.v1',
+      target_date: '2026-01-15',
+      schedules: [
+        { schedule_id: 'schedule-one', phase_id: 'phase-one', events: [event(item, 'event-one', '2026-01-15T08:00:00Z')] },
+        { schedule_id: 'schedule-missing', phase_id: 'phase-missing', events: [event(secondItem, 'event-two', '2026-01-15T09:00:00Z')] },
+      ],
+    } as unknown as DayPlan
+    const fingerprint = InterventionOrchestrator.fingerprint({ project, items: [item, secondItem], dayPlan })
+    const candidate = {
+      ...proposal,
+      proposal_id: `plan-${fingerprint.slice(0, 20)}`,
+      generation_fingerprint: fingerprint,
+      items: [item, secondItem],
+      day_plan: dayPlan,
+    }
+    const saved = handlePlanProposalActivity('save', { project_id: 'demo-project', proposal: candidate }, env(vault, iso))
+    expect(saved.ok).toBe(true)
+    if (!saved.ok) return
+    const proposalId = String((saved.data['proposal'] as StudyData)['proposal_id'])
+    const accepted = handlePlanProposalActivity('accept', { project_id: 'demo-project', proposal_id: proposalId }, env(vault, iso))
+    expect(accepted.ok).toBe(true)
+    const applied = handlePlanProposalActivity('apply', { project_id: 'demo-project', proposal_id: proposalId }, env(vault, iso))
+    expect(applied.ok).toBe(false)
+    if (!applied.ok) expect(applied.error.code).toBe('SCHEDULE_NOT_FOUND')
+    const { readJsonFile, schedulePath } = await import('../../src/vault.ts')
+    const unchanged = readJsonFile(schedulePath(vault, 'demo-project', 'schedule-one'))
+    expect(unchanged['events']).toEqual([])
+  })
+
+  it('rejects a newly introduced Schedule conflict at apply time', async () => {
+    const vault = tempVault()
+    writeProject(vault, 'demo-project')
+    const schedule: StudySchedule = {
+      schema_version: 'study_schedule.v1',
+      schedule_id: 'schedule-one',
+      project_id: 'demo-project',
+      title: 'Schedule One',
+      timezone: 'UTC',
+      range: { start: '2026-01-01', end: '2026-01-31' },
+      phases: [{ id: 'phase-one', title: 'Phase One', start: '2026-01-01', end: '2026-01-31', goal: 'Learn' }],
+      events: [],
+    }
+    writeSchedule(vault, 'demo-project', schedule)
+    const saved = await saveBase(vault)
+    const proposalId = String(saved['proposal_id'])
+    const dayPlan = saved['day_plan'] as DayPlan
+    const planned = dayPlan.schedules[0]!.events[0]!
+    handlePlanProposalActivity('accept', { project_id: 'demo-project', proposal_id: proposalId }, env(vault, iso))
+
+    schedule.events = [scheduledEvent({
+      id: 'new-conflict',
+      start: planned.start,
+      end: planned.end,
+      duration_minutes: planned.duration_minutes,
+    })]
+    writeSchedule(vault, 'demo-project', schedule)
+
+    const applied = handlePlanProposalActivity('apply', {
+      project_id: 'demo-project',
+      proposal_id: proposalId,
+    }, env(vault, iso))
+    expect(applied.ok).toBe(false)
+    if (!applied.ok) expect(applied.error.code).toBe('SCHEDULE_CONFLICT')
+  })
+
   it('ensure_today derives then is idempotent', async () => {
     const vault = tempVault()
     writeProject(vault, 'demo-project')
@@ -153,6 +251,18 @@ describe('handlePlanProposalActivity', () => {
       expect(second.data['created']).toBe(false)
       expect(second.data['reason']).toBe('a proposed plan already exists for this date')
     }
+  })
+
+  it('ensure_today rejects a custom target date outside today', () => {
+    const vault = tempVault()
+    writeProject(vault, 'demo-project')
+    const result = handlePlanProposalActivity('ensure_today', {
+      project_id: 'demo-project',
+      as_of: iso,
+      scheduling: { target_date: '2026-01-16' },
+    }, env(vault, iso))
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error.code).toBe('VALIDATION_FAILED')
   })
 
   it('unknown action returns INVALID_ACTION', () => {

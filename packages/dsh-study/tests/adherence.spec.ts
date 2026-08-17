@@ -11,6 +11,9 @@ function attempt(partial: Partial<StudyAttempt> & { attempt_id: string }): Study
     response: 'r',
     result: 'correct',
     score: 1.0,
+    source_plan_proposal_id: 'plan-1',
+    source_intervention_id: 'iv-1',
+    intervention_kind: 'evidence_probe',
     ...partial,
   }
 }
@@ -156,6 +159,27 @@ describe('buildPlanAdherence', () => {
     expect(rendered.observed_minutes).toBe(30)
     expect(rendered.start_delay_minutes).toBe(10)
     expect(rendered.attempt_ids).toEqual(['at-1'])
+  })
+
+  it('does not claim same-day evidence from another Intervention', () => {
+    const result = buildPlanAdherence({
+      schedules: [schedule([event({})])],
+      attempts: [attempt({
+        attempt_id: 'at-other',
+        objective_ids: ['obj-1'],
+        transfer_level: 'recall',
+        occurred_at: '2026-07-01T08:10:00Z',
+        source_plan_proposal_id: 'plan-other',
+        source_intervention_id: 'iv-other',
+      })],
+      timeZone,
+      start: range.start,
+      end: range.end,
+      asOf,
+    })
+    const day = (result.days as Array<Record<string, unknown>>)[0]!
+    expect((day.events as Array<Record<string, unknown>>)[0]!.status).toBe('not_started')
+    expect(day.unplanned_attempt_ids).toEqual(['at-other'])
   })
 
   it('classifies under_run and over_run', () => {

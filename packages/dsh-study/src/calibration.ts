@@ -74,7 +74,7 @@ export function calibratedDuration(options: {
   const { attempts, kind, defaultMinutes } = options
   const observed: number[] = []
   for (const attempt of attempts) {
-    if ((attempt.activity_kind ?? '') !== kind) continue
+    if ((attempt.intervention_kind ?? attempt.activity_kind ?? '') !== kind) continue
     const minutes = positiveMinutes(attempt.duration_seconds)
     if (minutes !== null) observed.push(minutes)
   }

@@ -1,13 +1,12 @@
 /**
- * StudyOS coach handler: session lifecycle and evidence projection. Mirrors the Python
- * `learning.py` `handle_study_coach` plus its `_intervention_orchestration`, `_recent_outcomes`,
- * `_recent_adherence`, `_readable_plan_proposals`, `_project_schedules`, `_project_timezone`,
- * and `_learning_runtime` helpers verbatim so diagnoses, plans, and model-facing values stay
- * identical.
+ * StudyOS coach handler: session lifecycle, evidence projection, configurable planning,
+ * and provenance-safe execution of accepted Interventions.
  * @module @puji4810/dsh-study/handlers/coach
  */
 
+import { randomUUID } from 'node:crypto'
 import { existsSync, readdirSync, statSync } from 'node:fs'
+import { ASSISTANCE_LEVELS } from '../constants.ts'
 import { addDays, isValidTimeZone, localDateString } from '../datetime.ts'
 import { err, errFrom, ok, StudyOSError, type StudyEnvelope } from '../errors.ts'
 import { activityAdapterFor } from '../activities.ts'
@@ -16,9 +15,11 @@ import { capacityFactor, outcomeAdjustment } from '../calibration.ts'
 import { buildInterventionOutcomes } from '../outcomes.ts'
 import { diagnoseAttempts, patternProposals, probeBlueprint, recommendations } from '../diagnosis.ts'
 import { InterventionOrchestrator, parseAsOf } from '../interventions.ts'
+import { parseDayPlanPreferences } from '../day-plan.ts'
 import { LearningRuntime } from '../runtime.ts'
 import type {
   DayPlan,
+  InterventionItem,
   InterventionQueue,
   PlanProposal,
   StudyAttempt,
@@ -34,6 +35,7 @@ import {
   resolveVaultPath,
   runtimeIndexPath,
   sessionsDir,
+  validateScheduleId,
 } from '../vault.ts'
 import { filteredAttempts, recordAttempt } from './attempt.ts'
 import { nowIso, type HandlerEnv } from './dispatch.ts'
@@ -118,6 +120,104 @@ function validatePlanProposalLocal(value: Record<string, unknown>): StudyData | 
   const result = validatePlanProposal(value)
   if (!result.ok) return null
   return isObject(result.value) ? result.value : null
+}
+
+/** Resolve one accepted Intervention into the explicit Session contract that executes it. */
+function acceptedInterventionContract(
+  vault: string,
+  project: StudyProject,
+  data: StudyData,
+): { proposalId: string; interventionId: string; contract: StudyData; plannedEvent: StudyData | null; adjustments: StudyData } {
+  const proposalId = validateScheduleId(data['proposal_id'])
+  const interventionId = validateScheduleId(data['intervention_id'])
+  const path = `${planProposalDir(vault, project.project_id, false)}/${proposalId}.json`
+  if (!existsSync(path)) {
+    throw new StudyOSError('PROPOSAL_NOT_FOUND', `Plan Proposal not found: ${proposalId}`)
+  }
+  const proposal = validatePlanProposalLocal(readJsonFile(path))
+  if (proposal === null || proposal['project_id'] !== project.project_id) {
+    throw new StudyOSError('VALIDATION_FAILED', `Invalid Plan Proposal: ${proposalId}`)
+  }
+  if (proposal['status'] !== 'accepted') {
+    throw new StudyOSError(
+      'PROPOSAL_NOT_ACCEPTED',
+      `Only an accepted Plan Proposal may start an Intervention; ${proposalId} is ${proposal['status']}`,
+    )
+  }
+  const item = ((proposal['items'] as InterventionItem[] | undefined) ?? [])
+    .find(candidate => candidate.intervention_id === interventionId)
+  if (item === undefined) {
+    throw new StudyOSError('INTERVENTION_NOT_FOUND', `Intervention not found in ${proposalId}: ${interventionId}`)
+  }
+  const activity = item.recommended_activity
+  const repairKinds = new Set(['guided_repair', 'misconception_probe', 'prerequisite_repair'])
+  let plannedEvent: StudyData | null = null
+  const dayPlan = proposal['day_plan']
+  if (isObject(dayPlan) && Array.isArray(dayPlan['schedules'])) {
+    for (const schedule of dayPlan['schedules']) {
+      if (!isObject(schedule) || !Array.isArray(schedule['events'])) continue
+      const event = schedule['events'].find(candidate => (
+        isObject(candidate) && candidate['source_intervention_id'] === interventionId
+      ))
+      if (isObject(event)) {
+        plannedEvent = {
+          schedule_id: schedule['schedule_id'],
+          target_date: dayPlan['target_date'],
+          ...event,
+        }
+        break
+      }
+    }
+  }
+  const execution = data['execution']
+  if (execution !== undefined && !isObject(execution)) {
+    throw new StudyOSError('VALIDATION_FAILED', 'execution must be an object')
+  }
+  const executionRecord = isObject(execution) ? execution : {}
+  let timeBudget = typeof plannedEvent?.['duration_minutes'] === 'number'
+    ? Number(plannedEvent['duration_minutes'])
+    : activity.duration_minutes
+  if (executionRecord['time_budget_minutes'] !== undefined) {
+    const requested = executionRecord['time_budget_minutes']
+    if (!Number.isInteger(requested) || Number(requested) < 1 || Number(requested) > 720) {
+      throw new StudyOSError('VALIDATION_FAILED', 'execution.time_budget_minutes must be an integer from 1 to 720')
+    }
+    timeBudget = Number(requested)
+  }
+  let assistanceLevel = activity.assistance_level
+  if (executionRecord['assistance_level'] !== undefined) {
+    if (!ASSISTANCE_LEVELS.includes(executionRecord['assistance_level'] as never)) {
+      throw new StudyOSError(
+        'VALIDATION_FAILED',
+        `execution.assistance_level must be one of: ${ASSISTANCE_LEVELS.join(', ')}`,
+      )
+    }
+    assistanceLevel = executionRecord['assistance_level'] as typeof assistanceLevel
+  }
+  return {
+    proposalId,
+    interventionId,
+    contract: {
+      objective: item.capability,
+      mode: repairKinds.has(item.kind) ? 'learn' : 'assess',
+      assistance_level: assistanceLevel,
+      time_budget_minutes: timeBudget,
+      objective_ids: [item.objective_id],
+      evidence_targets: [activity.evidence_target],
+      intervention_kind: item.kind,
+      source_plan_proposal_id: proposalId,
+      source_intervention_id: interventionId,
+    },
+    plannedEvent,
+    adjustments: {
+      time_budget_source: executionRecord['time_budget_minutes'] !== undefined
+        ? 'execution_override'
+        : plannedEvent === null ? 'recommended_activity' : 'day_plan_event',
+      assistance_source: executionRecord['assistance_level'] !== undefined
+        ? 'execution_override'
+        : 'recommended_activity',
+    },
+  }
 }
 
 /**
@@ -222,6 +322,12 @@ export function interventionOrchestration(
   const asOf = parseAsOf(data['as_of'])
   const attempts = allAttempts(vault, project.project_id)
   const schedules = projectSchedules(vault, project.project_id)
+  let scheduling
+  try {
+    scheduling = parseDayPlanPreferences(data['scheduling'])
+  } catch (error) {
+    throw new StudyOSError('VALIDATION_FAILED', messageOf(error))
+  }
   const orchestrator = new InterventionOrchestrator({ project, diagnosisBuilder: diagnoseAttempts })
   void env
   return orchestrator.build({
@@ -231,6 +337,7 @@ export function interventionOrchestration(
     schedules,
     outcomes: recentOutcomes(vault, project, attempts, asOf),
     adherence: recentAdherence(project, schedules, attempts, asOf),
+    scheduling,
   })
 }
 
@@ -288,11 +395,25 @@ export function handleStudyCoach(args: StudyData, env: HandlerEnv): StudyEnvelop
     const data = mergeCoachPayload(args)
     const vault = resolveVaultPath(data['vault_path'], env.vaultPath)
     const project = readProjectManifest(vault, data['project_id'])
-    if (action === 'start' || action === 'advance' || action === 'snapshot' || action === 'finish') {
+    if (action === 'start' || action === 'start_intervention' || action === 'advance' || action === 'snapshot' || action === 'finish') {
       const runtime = learningRuntime(vault, project, env)
       const sessionId = data['session_id']
       let output: Record<string, unknown>
-      if (action === 'start') {
+      if (action === 'start_intervention') {
+        const resolved = acceptedInterventionContract(vault, project, data)
+        output = runtime.start({
+          sessionId: sessionId ?? `session-${randomUUID().replace(/-/g, '').slice(0, 16)}`,
+          contract: resolved.contract,
+          conversationSessionId: data['conversation_session_id'] ?? env.conversationId,
+        })
+        output = {
+          proposal_id: resolved.proposalId,
+          intervention_id: resolved.interventionId,
+          planned_event: resolved.plannedEvent,
+          execution_adjustments: resolved.adjustments,
+          ...output,
+        }
+      } else if (action === 'start') {
         output = runtime.start({
           sessionId,
           contract: data['contract'],
@@ -380,9 +501,11 @@ export function handleStudyCoach(args: StudyData, env: HandlerEnv): StudyEnvelop
         proposal: orchestration.proposal,
         intervention_queue: orchestration.queue,
         policy: (
-          'This call is read-only. Persist with plan_proposal.save; only a non-cron '
-          + 'explicit accept/reject may decide it, and Schedule changes still require '
-          + 'schedule.validate then schedule.save.'
+          'This call is read-only. Re-run it with data.scheduling to compare calendar '
+          + 'alternatives without changing evidence priority. Persist with plan_proposal.save; '
+          + 'only an explicit non-cron accept/reject may decide it. plan_proposal.apply writes '
+          + 'accepted events after a fresh project-wide conflict check; phase/range changes '
+          + 'still require schedule.validate then schedule.save.'
         ),
       })
     }

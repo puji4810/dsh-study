@@ -1,17 +1,16 @@
 /**
  * StudyOS plan-proposal handler: save / list / read / ensure_today / apply / accept / reject.
- * Mirrors the Python `learning.py` plan-proposal functions verbatim (lines 466-880) so the
- * derive → decide → apply state machine and its model-facing values stay identical.
+ * Owns the derive → decide → apply state machine and atomic Schedule projection.
  * @module @puji4810/dsh-study/handlers/plan-proposal
  */
 
 import { existsSync, readdirSync } from 'node:fs'
 import { INTERVENTION_POLICY_VERSION, PLAN_PROPOSAL_SCHEMA_VERSION, PROJECT_SCHEMA_VERSION_V2 } from '../constants.ts'
-import { localDateString, parseDate } from '../datetime.ts'
+import { localDateString, parseDate, parseOffsetDateTime } from '../datetime.ts'
 import { err, errFrom, ok, StudyOSError, type StudyEnvelope } from '../errors.ts'
 import { InterventionOrchestrator, parseAsOf } from '../interventions.ts'
-import { activePhase } from '../day-plan.ts'
-import { interventionOrchestration, projectTimeZone } from './coach.ts'
+import { activePhase, parseDayPlanPreferences } from '../day-plan.ts'
+import { interventionOrchestration, projectSchedules, projectTimeZone } from './coach.ts'
 import type { DayPlan, InterventionItem, StudyData, StudyProject } from '../types.ts'
 import { validateStudySchedule, validateScheduleRelationships, validatePlanProposal } from '../validate.ts'
 import {
@@ -22,6 +21,7 @@ import {
   resolveVaultPath,
   schedulePath,
   validateScheduleId,
+  writeJsonAtomic,
   writeText,
 } from '../vault.ts'
 import { nowIso, type HandlerEnv } from './dispatch.ts'
@@ -109,6 +109,16 @@ function eventsOnlyChange(before: StudyData, after: StudyData): boolean {
   delete beforeWithout['events']
   delete afterWithout['events']
   return JSON.stringify(beforeWithout) === JSON.stringify(afterWithout)
+}
+
+/** Whether two timezone-aware event intervals overlap. */
+function scheduleEventsOverlap(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  const aStart = typeof a['start'] === 'string' ? parseOffsetDateTime(a['start']) : null
+  const aEnd = typeof a['end'] === 'string' ? parseOffsetDateTime(a['end']) : null
+  const bStart = typeof b['start'] === 'string' ? parseOffsetDateTime(b['start']) : null
+  const bEnd = typeof b['end'] === 'string' ? parseOffsetDateTime(b['end']) : null
+  if (aStart === null || aEnd === null || bStart === null || bEnd === null) return false
+  return aStart < bEnd && aEnd > bStart
 }
 
 /** Save a candidate proposal the Python `_plan_proposal_activity` `save` way. */
@@ -262,7 +272,8 @@ export function handlePlanProposalActivity(action: string, args: StudyData, env:
       schedule_mutated: false,
       schedule_policy: (
         'Acceptance records the learner decision only. Call plan_proposal.apply to write this '
-        + 'plan\'s events into their Schedules; it writes events and nothing else. A change to '
+        + 'plan\'s events into their Schedules; it rechecks project-wide conflicts, writes events '
+        + 'and nothing else, and refuses a stale projection. A change to '
         + 'phases or range remains a separate schedule.validate then schedule.save.'
       ),
     })
@@ -290,6 +301,18 @@ function ensureTodayProposal(
 ): StudyEnvelope {
   const asOf = parseAsOf(args['as_of'])
   const target = localDateString(asOf, projectTimeZone(project))!
+  let scheduling
+  try {
+    scheduling = parseDayPlanPreferences(args['scheduling'])
+  } catch (error) {
+    return err('VALIDATION_FAILED', messageOf(error))
+  }
+  if (scheduling?.target_date !== undefined && scheduling.target_date !== target) {
+    return err(
+      'VALIDATION_FAILED',
+      'plan_proposal.ensure_today only plans the project-local current date; use study_coach.propose_plan then plan_proposal.save for another date',
+    )
+  }
   const existing: StudyData[] = []
   for (const name of sortedJsonNames(root)) {
     existing.push(validatedPlanProposal(`${root}/${name}`))
@@ -368,7 +391,14 @@ function applyPlanProposal(
   if (parseDate(target) === null) {
     return err('VALIDATION_FAILED', 'day_plan.target_date must be an ISO date')
   }
-  const applied: StudyData[] = []
+  const prepared: Array<{
+    scheduleId: string
+    scheduleFilePath: string
+    before: StudyData
+    after: StudyData
+    eventsWritten: number
+  }> = []
+  const currentSchedules = projectSchedules(vault, project.project_id)
   for (const entry of entries) {
     const scheduleId = String(entry['schedule_id'] || '')
     const scheduleFilePath = schedulePath(vault, project.project_id, scheduleId)
@@ -380,11 +410,31 @@ function applyPlanProposal(
     if (phase === null || String(phase['id']) !== String(entry['phase_id'])) {
       return err('PHASE_DRIFTED', `Schedule ${scheduleId} no longer has phase ${entry['phase_id']} covering ${target}; re-derive the plan`)
     }
+    const plannedEvents = (entry['events'] as Array<Record<string, unknown>> | undefined ?? [])
+      .filter(isObject)
+    for (const event of plannedEvents) {
+      for (const currentSchedule of currentSchedules) {
+        const currentScheduleId = String(currentSchedule['schedule_id'] ?? '')
+        const currentEvents = (currentSchedule['events'] as Array<Record<string, unknown>> | undefined ?? [])
+          .filter(isObject)
+        for (const existing of currentEvents) {
+          if (currentScheduleId === scheduleId && String(existing['id']) === String(event['id'])) continue
+          if (scheduleEventsOverlap(existing, event)) {
+            return err(
+              'SCHEDULE_CONFLICT',
+              `Schedules changed after this proposal was derived; event ${String(event['id'])} in ${scheduleId} now overlaps ${String(existing['id'])} in ${currentScheduleId}. Re-derive the plan.`,
+            )
+          }
+        }
+      }
+    }
+    const existingEvents = (before['events'] as Array<Record<string, unknown>> | undefined ?? [])
+      .filter(isObject)
     const merged = new Map<string, Record<string, unknown>>()
-    for (const event of (before['events'] as Array<Record<string, unknown>> | undefined ?? [])) {
+    for (const event of existingEvents) {
       if (isObject(event)) merged.set(String(event['id']), event)
     }
-    for (const event of (entry['events'] as Array<Record<string, unknown>> | undefined ?? [])) {
+    for (const event of plannedEvents) {
       merged.set(String(event['id']), { ...event, source_plan_proposal_id: proposalId })
     }
     const after: StudyData = {
@@ -402,14 +452,43 @@ function applyPlanProposal(
     if (scheduleValidation.errors.length > 0 || scheduleValidation.value === null) {
       return err('VALIDATION_FAILED', scheduleValidation.errors.join('; '), { errors: scheduleValidation.errors })
     }
-    writeText(scheduleFilePath, JSON.stringify(scheduleValidation.value))
-    applied.push({
-      schedule_id: scheduleId,
-      path: scheduleFilePath.slice(vault.length + 1),
-      events_written: (entry['events'] as unknown[] ?? []).length,
-      events_total: (scheduleValidation.value['events'] as unknown[] ?? []).length,
+    prepared.push({
+      scheduleId,
+      scheduleFilePath,
+      before,
+      after: scheduleValidation.value,
+      eventsWritten: (entry['events'] as unknown[] ?? []).length,
     })
   }
+  const committed: typeof prepared = []
+  try {
+    for (const item of prepared) {
+      writeJsonAtomic(item.scheduleFilePath, item.after)
+      committed.push(item)
+    }
+  } catch (error) {
+    let rollbackFailure: unknown = null
+    for (const item of [...committed].reverse()) {
+      try {
+        writeJsonAtomic(item.scheduleFilePath, item.before)
+      } catch (rollbackError) {
+        rollbackFailure = rollbackError
+      }
+    }
+    if (rollbackFailure !== null) {
+      throw new StudyOSError(
+        'APPLY_ROLLBACK_FAILED',
+        `Plan Proposal apply failed and rollback was incomplete: ${messageOf(rollbackFailure)}`,
+      )
+    }
+    throw error
+  }
+  const applied: StudyData[] = prepared.map(item => ({
+    schedule_id: item.scheduleId,
+    path: item.scheduleFilePath.slice(vault.length + 1),
+    events_written: item.eventsWritten,
+    events_total: (item.after['events'] as unknown[] ?? []).length,
+  }))
   return ok({
     project_id: project.project_id,
     proposal_id: proposalId,
@@ -417,7 +496,8 @@ function applyPlanProposal(
     applied,
     schedule_mutated: true,
     scope_policy: (
-      'Only events were written. Phases, range, and title are untouched, so '
+      'Project-wide conflicts were rechecked and only events were written. '
+      + 'Phases, range, and title are untouched, so '
       + 'an applied day never rewrites the long-term plan.'
     ),
   })

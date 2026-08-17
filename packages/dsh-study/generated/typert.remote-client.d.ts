@@ -4,16 +4,37 @@ import type {
   TypertRemoteContribution,
 } from '@deepseek-ai/dsh-typert-protocol'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { StudyDashboardOverview } from '@puji4810/dsh-study/types'
+import type {
+  PlanProposal,
+  StudyDashboardOverview,
+  StudyDashboardPlanApplyRequest,
+  StudyDashboardPlanApplyResult,
+  StudyDashboardPlanDecisionRequest,
+  StudyDashboardPlanDecisionResult,
+  StudyDashboardPlanPreview,
+  StudyDashboardPlanRequest,
+  StudyDashboardPlanSaveRequest,
+  StudyDashboardPlanSaveResult,
+} from '@puji4810/dsh-study/types'
 
 declare module '@deepseek-ai/dsh-typert-protocol' {
   interface TypertRemoteNamespace$73747564796f73 {
     overview: (agentId: SessionId) => Promise<RemoteResult<StudyDashboardOverview>>
     selectProject: (agentId: SessionId, projectId: string) => Promise<RemoteResult<StudyDashboardOverview>>
+    previewPlan: (agentId: SessionId, request: StudyDashboardPlanRequest) => Promise<RemoteResult<StudyDashboardPlanPreview>>
+    latestPlan: (agentId: SessionId, projectId: string) => Promise<RemoteResult<PlanProposal | null>>
+    savePlan: (agentId: SessionId, request: StudyDashboardPlanSaveRequest) => Promise<RemoteResult<StudyDashboardPlanSaveResult>>
+    decidePlan: (agentId: SessionId, request: StudyDashboardPlanDecisionRequest) => Promise<RemoteResult<StudyDashboardPlanDecisionResult>>
+    applyPlan: (agentId: SessionId, request: StudyDashboardPlanApplyRequest) => Promise<RemoteResult<StudyDashboardPlanApplyResult>>
   }
   interface TypertRemoteMap {
     'studyos/overview': (agentId: SessionId) => Promise<RemoteResult<StudyDashboardOverview>>
     'studyos/selectProject': (agentId: SessionId, projectId: string) => Promise<RemoteResult<StudyDashboardOverview>>
+    'studyos/previewPlan': (agentId: SessionId, request: StudyDashboardPlanRequest) => Promise<RemoteResult<StudyDashboardPlanPreview>>
+    'studyos/latestPlan': (agentId: SessionId, projectId: string) => Promise<RemoteResult<PlanProposal | null>>
+    'studyos/savePlan': (agentId: SessionId, request: StudyDashboardPlanSaveRequest) => Promise<RemoteResult<StudyDashboardPlanSaveResult>>
+    'studyos/decidePlan': (agentId: SessionId, request: StudyDashboardPlanDecisionRequest) => Promise<RemoteResult<StudyDashboardPlanDecisionResult>>
+    'studyos/applyPlan': (agentId: SessionId, request: StudyDashboardPlanApplyRequest) => Promise<RemoteResult<StudyDashboardPlanApplyResult>>
   }
   interface TypertRemoteNamespaceMap {
     'studyos': TypertRemoteNamespace$73747564796f73
@@ -21,6 +42,11 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
   interface TypertRemoteScopeMap {
     'agent:studyos/overview': () => Promise<RemoteResult<StudyDashboardOverview>>
     'agent:studyos/selectProject': (projectId: string) => Promise<RemoteResult<StudyDashboardOverview>>
+    'agent:studyos/previewPlan': (request: StudyDashboardPlanRequest) => Promise<RemoteResult<StudyDashboardPlanPreview>>
+    'agent:studyos/latestPlan': (projectId: string) => Promise<RemoteResult<PlanProposal | null>>
+    'agent:studyos/savePlan': (request: StudyDashboardPlanSaveRequest) => Promise<RemoteResult<StudyDashboardPlanSaveResult>>
+    'agent:studyos/decidePlan': (request: StudyDashboardPlanDecisionRequest) => Promise<RemoteResult<StudyDashboardPlanDecisionResult>>
+    'agent:studyos/applyPlan': (request: StudyDashboardPlanApplyRequest) => Promise<RemoteResult<StudyDashboardPlanApplyResult>>
   }
 }
 

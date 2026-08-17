@@ -16,6 +16,7 @@ import type {
   StudyDashboardProject,
 } from '@puji4810/dsh-study/types'
 import type { StudyOSPanelFace } from './slots.ts'
+import { StudyPlanPanel } from './StudyPlanPanel.tsx'
 import type {} from './locales.ts'
 import css from './StudyOSPanel.module.css'
 
@@ -23,7 +24,7 @@ import css from './StudyOSPanel.module.css'
 export type StudyOSPanelProps =
   PropsRuntime<'sidebar.footer.action'> & InjectFace<StudyOSPanelFace> & PropsLocale<'studyos'>
 
-type View = 'project' | 'calendar'
+type View = 'project' | 'plan' | 'calendar'
 
 /** The framework-injected translate seat for the `studyos` locale. */
 type T = TranslateNS<'studyos'>
@@ -50,7 +51,18 @@ function isoOf(date: Date): string {
  * @param props - sidebar runtime, localized copy, and StudyOS Remote actions.
  * @returns footer trigger and its big workspace window.
  */
-export function StudyOSPanel({ wide, useSessions, load, selectProject, t }: StudyOSPanelProps) {
+export function StudyOSPanel({
+  wide,
+  useSessions,
+  load,
+  selectProject,
+  previewPlan,
+  latestPlan,
+  savePlan,
+  decidePlan,
+  applyPlan,
+  t,
+}: StudyOSPanelProps) {
   const current = useSessions(state => state.current)
   const [open, setOpen] = useState(false)
   const [overview, setOverview] = useState<StudyDashboardOverview | null>(null)
@@ -196,6 +208,13 @@ export function StudyOSPanel({ wide, useSessions, load, selectProject, t }: Stud
               </button>
               <button
                 type="button"
+                className={`${css.navItem} ${view === 'plan' ? css.navActive : ''}`}
+                onClick={() => { setView('plan') }}
+              >
+                {t('tabPlan')}
+              </button>
+              <button
+                type="button"
                 className={`${css.navItem} ${view === 'calendar' ? css.navActive : ''}`}
                 onClick={() => { setView('calendar') }}
               >
@@ -227,6 +246,20 @@ export function StudyOSPanel({ wide, useSessions, load, selectProject, t }: Stud
 
               {overview !== null && current !== undefined && view === 'project' && activeProject !== null && (
                 <ProjectDetail project={activeProject} t={t} />
+              )}
+
+              {overview !== null && current !== undefined && view === 'plan' && activeProject !== null && (
+                <StudyPlanPanel
+                  sessionId={current}
+                  project={activeProject}
+                  previewPlan={previewPlan}
+                  latestPlan={latestPlan}
+                  savePlan={savePlan}
+                  decidePlan={decidePlan}
+                  applyPlan={applyPlan}
+                  onApplied={refresh}
+                  t={t}
+                />
               )}
 
               {overview !== null && current !== undefined && view === 'calendar' && (

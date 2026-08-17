@@ -495,6 +495,16 @@ export class LearningRuntime {
     const assistanceLevel = contract['assistance_level']
     const { criteria, anchors } = this.objectiveDetails(contract)
     const sequence = ((session['activity_history'] as unknown[] | undefined) ?? []).length + 1
+    const interventionKind = stringValue(contract['intervention_kind'])
+    const recommendation: Recommendation | null = interventionKind
+      ? {
+        priority: 'accepted-plan',
+        intervention: interventionKind,
+        reason: `Execute accepted Intervention ${stringValue(contract['source_intervention_id'])}.`,
+        evidence_attempt_ids: [],
+        evidence_dimension: target,
+      }
+      : null
     const activity: Record<string, unknown> = {
       schema_version: ACTIVITY_SPEC_SCHEMA_VERSION,
       activity_id: `activity-${String(session['session_id'])}-${String(sequence).padStart(3, '0')}`,
@@ -519,10 +529,15 @@ export class LearningRuntime {
       project: this.project,
       contract: contract as unknown as LearningContract,
       evidence_target: target,
-      recommendation: null,
+      recommendation,
       success_criteria: criteria,
       source_anchors: anchors,
     }))
+    if (interventionKind) {
+      activity['intervention_kind'] = interventionKind
+      activity['source_plan_proposal_id'] = contract['source_plan_proposal_id']
+      activity['source_intervention_id'] = contract['source_intervention_id']
+    }
     return activity
   }
 
@@ -565,6 +580,9 @@ export class LearningRuntime {
       source_anchors: observation['source_anchors'] ?? activity['source_anchors'] ?? [],
       artifact_refs: observation['artifact_refs'],
       activity_kind: activity['kind'],
+      intervention_kind: activity['intervention_kind'],
+      source_plan_proposal_id: activity['source_plan_proposal_id'],
+      source_intervention_id: activity['source_intervention_id'],
       source: activity['activity_id'],
       session_id: session['session_id'],
     }

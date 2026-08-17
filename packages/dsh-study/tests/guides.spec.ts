@@ -28,16 +28,31 @@ describe('PROMPT_OPERATION_GUIDES', () => {
         data: 'complete study_schedule.v1 object returned from template',
       },
       {
+        tool: 'study_coach',
+        action: 'prioritize|propose_plan',
+        data_fields: [
+          'max_items?',
+          'as_of?',
+          'scheduling?{target_date?,windows?[],busy?[],break_minutes?,max_minutes?,allow_duration_adjustment?,min_duration_minutes?,intervention_order?[],defer_intervention_ids?[],placements?[]}',
+        ],
+      },
+      {
         tool: 'study_activity',
         operation: 'plan_proposal.ensure_today|list|read|save|accept|reject|apply',
+      },
+      {
+        tool: 'study_coach',
+        action: 'start_intervention',
+        data_fields: ['proposal_id', 'intervention_id', 'session_id?', 'execution?{time_budget_minutes?,assistance_level?}'],
       },
     ])
   })
 
   it('records the remaining intents verbatim', () => {
     const scheduleAdjustment = PROMPT_OPERATION_GUIDES.schedule_adjustment
-    expect(scheduleAdjustment).toHaveLength(3)
+    expect(scheduleAdjustment).toHaveLength(4)
     expect(scheduleAdjustment?.[0]).toEqual({ tool: 'study_activity', operation: 'project.status' })
+    expect(scheduleAdjustment?.[3]?.['action']).toBe('prioritize|propose_plan')
 
     const organizing = PROMPT_OPERATION_GUIDES.organizing
     expect(organizing?.[0]).toEqual({
@@ -51,7 +66,7 @@ describe('PROMPT_OPERATION_GUIDES', () => {
     expect(reviewing?.[0]?.['operation']).toBe('review.due')
 
     const teaching = PROMPT_OPERATION_GUIDES.teaching
-    expect(teaching).toHaveLength(5)
+    expect(teaching).toHaveLength(6)
     expect(teaching?.[2]?.['tool']).toBe('study_coach')
 
     const assessment = PROMPT_OPERATION_GUIDES.assessment

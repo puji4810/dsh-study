@@ -16,15 +16,31 @@ import { defineTool, type InferArgs, type InferValue, type ParameterSchemaSpec, 
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import type {} from '@deepseek-ai/dsh-skill'
 import { renderActiveSessionContext } from './context.ts'
+import type { StudyEnvelope } from './errors.ts'
 import {
   buildStudyDashboardOverview,
   dashboardVault,
 } from './dashboard.ts'
 import { handleStudyCoach } from './handlers/coach.ts'
+import { handlePlanProposalActivity } from './handlers/plan-proposal.ts'
 import { dispatchStudyActivity, type HandlerEnv } from './handlers/dispatch.ts'
 import { STUDY_SKILLS } from './skills.ts'
 import { resolveVaultPath, StudyWorkspace } from './vault.ts'
-import type { LearningSession, StudyDashboardOverview } from './types.ts'
+import type {
+  InterventionQueue,
+  LearningSession,
+  PlanProposal,
+  StudyDashboardOverview,
+  StudyDashboardPlanApplyRequest,
+  StudyDashboardPlanApplyResult,
+  StudyDashboardPlanDecisionRequest,
+  StudyDashboardPlanDecisionResult,
+  StudyDashboardPlanPreview,
+  StudyDashboardPlanRequest,
+  StudyDashboardPlanSaveRequest,
+  StudyDashboardPlanSaveResult,
+  StudyData,
+} from './types.ts'
 
 /** Deployment configuration for the StudyOS plugin. */
 export interface Config {
@@ -65,6 +81,7 @@ const RESOURCES = [
 
 const COACH_ACTIONS = [
   'start',
+  'start_intervention',
   'advance',
   'snapshot',
   'finish',
@@ -89,7 +106,9 @@ const STUDY_COACH_DESCRIPTION =
   'StudyOS evidence projection and Session runtime. Load the workflow guide '
   + 'before use. start creates no evidence and generates all created_at timestamps; '
   + 'callers must not send created_at. advance requires an evaluated '
-  + 'observation and returns continuation; finish may leave dimensions '
+  + 'observation and returns continuation; start_intervention executes one accepted '
+  + 'Plan Proposal item and accepts constrained execution overrides. propose_plan '
+  + 'accepts optional custom scheduling without changing the evidence ranking; finish may leave dimensions '
   + 'unverified. Analysis and proposal actions do not mutate Schedules.'
 
 const ENVELOPE_SCHEMA = {
@@ -153,7 +172,7 @@ const STUDY_COACH_PARAMETERS = {
   project_id: { type: 'string', description: 'Project id; defaults to the active project.' },
   data: {
     type: 'json',
-    description: 'Action payload from the loaded operation guide.',
+    description: 'Action payload from the loaded operation guide. propose_plan accepts scheduling; start_intervention accepts execution overrides.',
   },
 } satisfies ParameterSchemaSpec
 
@@ -163,6 +182,24 @@ function toolEnv(fallbackVaultPath: string | undefined, exec: ToolRunContext): H
   const env: HandlerEnv = { now: () => new Date(), ...vaultPath === undefined ? {} : { vaultPath } }
   if (exec.agent !== undefined) env.conversationId = String(exec.agent.id)
   return env
+}
+
+/** Handler environment for an explicit Dashboard interaction. */
+function dashboardEnv(agent: Agent, fallbackVaultPath: string | undefined): HandlerEnv {
+  return {
+    now: () => new Date(),
+    vaultPath: dashboardVault(agent, fallbackVaultPath),
+    conversationId: String(agent.id),
+  }
+}
+
+/** Convert a StudyOS handler failure into one Remote error. */
+function requireEnvelope<T>(
+  envelope: StudyEnvelope,
+  select: (data: StudyData) => T,
+): T {
+  if (!envelope.ok) throw new Error(`${envelope.error.code}: ${envelope.error.message}`)
+  return select(envelope.data)
 }
 
 /**
@@ -263,7 +300,7 @@ export class StudyOSService extends TypertRemoteService {
           { action: args.action, scope: args.scope, vault_path: args.vault_path, project_id: args.project_id, data: args.data },
           env,
         )
-        if (envelope.ok && (args.action === 'start' || args.action === 'advance')) {
+        if (envelope.ok && (args.action === 'start' || args.action === 'start_intervention' || args.action === 'advance')) {
           injectSessionContext(exec.agent, envelope.data.session)
         }
         // Wire-boundary cast: handler data is JSON-safe by construction, but the
@@ -301,6 +338,88 @@ export class StudyOSService extends TypertRemoteService {
     new StudyWorkspace({ vault: vaultPath, source: 'dsh-workspace' }).selectProject(projectId)
     return buildStudyDashboardOverview(agent, this.fallbackVaultPath)
   }
+
+  /** Derive a read-only Intervention Queue and configurable day-plan preview. */
+  @Remote('previewPlan')
+  previewPlan(agent: Agent, request: StudyDashboardPlanRequest): StudyDashboardPlanPreview {
+    const data: StudyData = {}
+    if (request.maxItems !== undefined) data['max_items'] = request.maxItems
+    if (request.asOf !== undefined) data['as_of'] = request.asOf
+    if (request.scheduling !== undefined) data['scheduling'] = request.scheduling as unknown as StudyData
+    const envelope = handleStudyCoach({
+      action: 'propose_plan',
+      scope: 'project',
+      project_id: request.projectId,
+      data,
+    }, dashboardEnv(agent, this.fallbackVaultPath))
+    return requireEnvelope(envelope, payload => ({
+      projectId: request.projectId,
+      interventionQueue: payload['intervention_queue'] as InterventionQueue,
+      proposal: (payload['proposal'] ?? null) as PlanProposal | null,
+    }))
+  }
+
+  /** Most recently created durable proposal for one project, if any. */
+  @Remote('latestPlan')
+  latestPlan(agent: Agent, projectId: string): PlanProposal | null {
+    const envelope = handlePlanProposalActivity('list', { project_id: projectId }, dashboardEnv(agent, this.fallbackVaultPath))
+    return requireEnvelope(envelope, payload => {
+      const proposals = ((payload['proposals'] as PlanProposal[] | undefined) ?? [])
+        .slice()
+        .sort((a, b) => {
+          if (a.created_at !== b.created_at) return a.created_at < b.created_at ? 1 : -1
+          return a.proposal_id < b.proposal_id ? 1 : -1
+        })
+      return proposals[0] ?? null
+    })
+  }
+
+  /** Persist a previewed proposal while keeping it undecided. */
+  @Remote('savePlan')
+  savePlan(agent: Agent, request: StudyDashboardPlanSaveRequest): StudyDashboardPlanSaveResult {
+    const envelope = handlePlanProposalActivity('save', {
+      project_id: request.projectId,
+      proposal: request.proposal as unknown as StudyData,
+    }, dashboardEnv(agent, this.fallbackVaultPath))
+    return requireEnvelope(envelope, payload => ({
+      proposal: payload['proposal'] as PlanProposal,
+      created: Boolean(payload['created']),
+      path: String(payload['path'] ?? ''),
+    }))
+  }
+
+  /** Record an explicit accept/reject decision from the Dashboard. */
+  @Remote('decidePlan')
+  decidePlan(agent: Agent, request: StudyDashboardPlanDecisionRequest): StudyDashboardPlanDecisionResult {
+    const payload: StudyData = {
+      project_id: request.projectId,
+      proposal_id: request.proposalId,
+    }
+    if (request.note !== undefined) payload['decision_note'] = request.note
+    const envelope = handlePlanProposalActivity(request.decision, payload, dashboardEnv(agent, this.fallbackVaultPath))
+    return requireEnvelope(envelope, data => ({
+      proposal: data['proposal'] as PlanProposal,
+      changed: Boolean(data['changed']),
+    }))
+  }
+
+  /** Apply an accepted proposal after the handler's fresh conflict check. */
+  @Remote('applyPlan')
+  applyPlan(agent: Agent, request: StudyDashboardPlanApplyRequest): StudyDashboardPlanApplyResult {
+    const envelope = handlePlanProposalActivity('apply', {
+      project_id: request.projectId,
+      proposal_id: request.proposalId,
+    }, dashboardEnv(agent, this.fallbackVaultPath))
+    return requireEnvelope(envelope, payload => {
+      const applied = (payload['applied'] as Array<Record<string, unknown>> | undefined) ?? []
+      return {
+        proposalId: request.proposalId,
+        targetDate: String(payload['target_date'] ?? ''),
+        appliedScheduleCount: applied.length,
+        appliedEventCount: applied.reduce((sum, row) => sum + Number(row['events_written'] ?? 0), 0),
+      }
+    })
+  }
 }
 
 export type { StudyEnvelope } from './errors.ts'
@@ -314,5 +433,13 @@ export type {
   StudyDashboardCalendarDay,
   StudyDashboardCalendarEvent,
   StudyDashboardMilestone,
+  StudyDashboardPlanRequest,
+  StudyDashboardPlanPreview,
+  StudyDashboardPlanSaveRequest,
+  StudyDashboardPlanSaveResult,
+  StudyDashboardPlanDecisionRequest,
+  StudyDashboardPlanDecisionResult,
+  StudyDashboardPlanApplyRequest,
+  StudyDashboardPlanApplyResult,
 } from './types.ts'
 export default StudyOSService

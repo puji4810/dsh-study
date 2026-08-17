@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activePhase, buildDayPlan, studyWindow } from '../src/day-plan.ts'
+import { activePhase, buildDayPlan, parseDayPlanPreferences, studyWindow } from '../src/day-plan.ts'
 import type { InterventionItem, StudyAttempt, StudyData, StudyProject } from '../src/types.ts'
 
 function mkAttempt(hour: number, attemptId: string): StudyAttempt {
@@ -243,7 +243,7 @@ describe('buildDayPlan', () => {
     })
     const event = plan.schedules[0]!.events[0]!
     expect(event.routing).toBe('sole-covering-schedule')
-    expect(event.id).toBe('dp-2026-07-01-01-evidence_probe')
+    expect(event.id).toBe('dp-2026-07-01-iv-1')
     expect(event.subject_id).toBe('track-math')
     expect(event.start).toBe('2026-07-01T19:00:00+00:00')
     expect(event.end).toBe('2026-07-01T19:30:00+00:00')
@@ -406,6 +406,95 @@ describe('buildDayPlan', () => {
       now: new Date('2026-06-30T12:00:00Z'),
     })
     expect(plan.schedules[0]!.events[0]!.start).toBe('2026-07-01T19:00:00+00:00')
+  })
+
+  it('uses custom availability and avoids existing Schedule events', () => {
+    const schedule = mkSchedule('sch-1', [mkPhase({})])
+    schedule['events'] = [{
+      id: 'existing',
+      title: 'Existing session',
+      subject_id: 'track-math',
+      type: 'practice',
+      start: '2026-07-01T19:00:00Z',
+      end: '2026-07-01T19:30:00Z',
+      duration_minutes: 30,
+      goals: ['existing'],
+      status: 'planned',
+    }]
+    const plan = buildDayPlan({
+      queueItems: [mkItem({ intervention_id: 'iv-1', objective_id: 'obj-1' })],
+      schedules: [schedule],
+      attempts: [],
+      project: mkProject(),
+      target,
+      timeZone,
+      preferences: { windows: [{ start: '19:00', end: '21:00' }] },
+    })
+    expect(plan.study_window.source).toBe('custom')
+    expect(plan.scheduling?.existing_event_conflicts).toBe(1)
+    expect(plan.schedules[0]!.events[0]!.start).toBe('2026-07-01T19:30:00+00:00')
+  })
+
+  it('lets scheduling preferences choose order, defer work, and route a placement', () => {
+    const plan = buildDayPlan({
+      queueItems: [
+        mkItem({ intervention_id: 'iv-1', objective_id: 'obj-1' }),
+        mkItem({ intervention_id: 'iv-2', objective_id: 'obj-2' }),
+        mkItem({ intervention_id: 'iv-3', objective_id: 'obj-3' }),
+      ],
+      schedules: [
+        mkSchedule('sch-one', [mkPhase({})]),
+        mkSchedule('sch-two', [mkPhase({})]),
+      ],
+      attempts: [],
+      project: mkProject(),
+      target,
+      timeZone,
+      preferences: {
+        windows: [{ start: '08:00', end: '10:00' }],
+        intervention_order: ['iv-2', 'iv-1'],
+        defer_intervention_ids: ['iv-3'],
+        placements: [{
+          intervention_id: 'iv-2',
+          schedule_id: 'sch-two',
+          start_time: '08:15',
+          duration_minutes: 20,
+        }],
+      },
+    })
+    const placed = plan.schedules.find(entry => entry.schedule_id === 'sch-two')!.events[0]!
+    expect(placed.source_intervention_id).toBe('iv-2')
+    expect(placed.routing).toBe('placement-preference')
+    expect(placed.duration_minutes).toBe(20)
+    expect(placed.duration_source).toBe('placement_override')
+    expect(plan.unplaced).toContainEqual({ intervention_id: 'iv-3', reason: 'deferred by scheduling preference' })
+  })
+
+  it('can adapt a recommendation to the available window within a minimum', () => {
+    const plan = buildDayPlan({
+      queueItems: [mkItem({ intervention_id: 'iv-1', objective_id: 'obj-1' })],
+      schedules: [mkSchedule('sch-1', [mkPhase({})])],
+      attempts: [],
+      project: mkProject(),
+      target,
+      timeZone,
+      preferences: {
+        windows: [{ start: '19:00', end: '19:20' }],
+        allow_duration_adjustment: true,
+        min_duration_minutes: 15,
+      },
+    })
+    const event = plan.schedules[0]!.events[0]!
+    expect(event.duration_minutes).toBe(20)
+    expect(event.recommended_duration_minutes).toBe(30)
+    expect(event.duration_source).toBe('adaptive_fit')
+  })
+
+  it('validates custom scheduling input before projection', () => {
+    expect(() => parseDayPlanPreferences({ windows: [{ start: '22:00', end: '20:00' }] }))
+      .toThrow('scheduling.windows[0]')
+    expect(() => parseDayPlanPreferences({ placements: [{ intervention_id: 'iv-1', start_time: '8pm' }] }))
+      .toThrow('start_time must be HH:MM')
   })
 
   it('derives a fractional coverage above half', () => {

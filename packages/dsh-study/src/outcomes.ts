@@ -51,15 +51,18 @@ function moment(value: unknown): Date | null {
 /** Attempts for one objective/dimension strictly after a decision. */
 function attemptsFor(
   attempts: StudyAttempt[],
+  proposalId: string,
+  interventionId: string,
   objectiveId: string,
   dimension: string,
   after: Date,
 ): StudyAttempt[] {
   const selected: StudyAttempt[] = []
   for (const attempt of attempts) {
+    if ((attempt.source_plan_proposal_id ?? '') !== proposalId) continue
+    if ((attempt.source_intervention_id ?? '') !== interventionId) continue
     if ((attempt.transfer_level ?? '') !== dimension) continue
-    const objectiveIds = attempt.objective_ids ?? []
-    if (!objectiveIds.some(id => id === objectiveId)) continue
+    if (!(attempt.objective_ids ?? []).includes(objectiveId)) continue
     const occurred = parseOffsetDateTime(attempt.occurred_at)
     if (occurred === null || occurred.getTime() <= after.getTime()) continue
     selected.push(attempt)
@@ -149,18 +152,6 @@ export function buildInterventionOutcomes(options: {
   asOf: Date
 }): Record<string, unknown> {
   const { proposals, attempts, diagnosisBuilder, asOf } = options
-  const diagnosed = new Map<string, Record<string, unknown>>()
-  const dimensionsFor = (objectiveId: string): Record<string, unknown> => {
-    let dims = diagnosed.get(objectiveId)
-    if (dims === undefined) {
-      const scoped = attempts.filter(a =>
-        (a.objective_ids ?? []).some(id => id === objectiveId),
-      )
-      dims = diagnosisBuilder(scoped).evidence_dimensions ?? {}
-      diagnosed.set(objectiveId, dims)
-    }
-    return dims
-  }
 
   const outcomes: Array<Record<string, unknown>> = []
   for (const proposal of proposals) {
@@ -179,15 +170,22 @@ export function buildInterventionOutcomes(options: {
       const baseline = typeof reasonFactors.verification_status === 'string' && reasonFactors.verification_status !== ''
         ? reasonFactors.verification_status
         : 'unobserved'
-      const since = attemptsFor(attempts, objectiveId, dimension, decidedAt)
-      const dimensions = dimensionsFor(objectiveId)
-      const projection = (dimensions[dimension] ?? {}) as Record<string, unknown>
+      const proposalId = fieldString(proposal.proposal_id)
+      const interventionId = fieldString(item.intervention_id)
+      const since = attemptsFor(attempts, proposalId, interventionId, objectiveId, dimension, decidedAt)
+      const baselineIds = new Set(
+        Array.isArray(item.evidence_attempt_ids) ? item.evidence_attempt_ids.map(String) : [],
+      )
+      const sinceIds = new Set(since.map(attempt => attempt.attempt_id))
+      const attributable = attempts.filter(attempt => baselineIds.has(attempt.attempt_id) || sinceIds.has(attempt.attempt_id))
+      const dimensions = diagnosisBuilder(attributable).evidence_dimensions ?? {}
+      const projection = (dimensions[dimension] ?? {}) as unknown as Record<string, unknown>
       const current = typeof projection.verification_status === 'string' && projection.verification_status !== ''
         ? projection.verification_status
         : 'unobserved'
       outcomes.push({
-        proposal_id: fieldString(proposal.proposal_id),
-        intervention_id: fieldString(item.intervention_id),
+        proposal_id: proposalId,
+        intervention_id: interventionId,
         objective_id: objectiveId,
         evidence_dimension: dimension,
         kind: fieldString(item.kind),

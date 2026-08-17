@@ -12,6 +12,9 @@ function attempt(partial: Partial<StudyAttempt> & { attempt_id: string }): Study
     response: 'r',
     result: 'correct',
     score: 1.0,
+    source_plan_proposal_id: 'plan-abc',
+    source_intervention_id: 'iv-1',
+    intervention_kind: 'evidence_probe',
     ...partial,
   }
 }
@@ -117,6 +120,31 @@ describe('buildInterventionOutcomes', () => {
     expect(outcome.days_since_decision).toBe(0)
   })
 
+  it('does not credit unrelated later evidence to an accepted Intervention', () => {
+    const result = buildInterventionOutcomes({
+      proposals: [
+        proposal({
+          items: [{ objective_id: 'obj-1', evidence_dimension: 'recall', kind: 'evidence_probe', reason_factors: { verification_status: 'developing' }, intervention_id: 'iv-1' }],
+        }),
+      ],
+      attempts: [
+        attempt({
+          attempt_id: 'at-unrelated',
+          objective_ids: ['obj-1'],
+          transfer_level: 'recall',
+          occurred_at: '2026-07-01T11:00:00Z',
+          source_plan_proposal_id: 'plan-other',
+          source_intervention_id: 'iv-other',
+        }),
+      ],
+      diagnosisBuilder: builder('supported', 'recall'),
+      asOf,
+    })
+    const outcome = (result.outcomes as Array<Record<string, unknown>>)[0]!
+    expect(outcome.outcome).toBe('not_attempted')
+    expect(outcome.evidence_attempt_ids_since).toEqual([])
+  })
+
   it('classifies regressed when the current status is weaker than the baseline', () => {
     const result = buildInterventionOutcomes({
       proposals: [
@@ -174,7 +202,14 @@ describe('buildInterventionOutcomes', () => {
     )
     const result = buildInterventionOutcomes({
       proposals,
-      attempts: [attempt({ attempt_id: 'at-1', objective_ids: ['obj-1'], transfer_level: 'recall', occurred_at: '2026-07-01T11:00:00Z' })],
+      attempts: proposals.map((candidate, index) => attempt({
+        attempt_id: `at-${index + 1}`,
+        objective_ids: ['obj-1'],
+        transfer_level: 'recall',
+        occurred_at: '2026-07-01T11:00:00Z',
+        source_plan_proposal_id: String(candidate.proposal_id),
+        source_intervention_id: `iv-${index + 1}`,
+      })),
       diagnosisBuilder: builder('independent', 'recall'),
       asOf,
     })
@@ -215,7 +250,10 @@ describe('buildInterventionOutcomes', () => {
           ],
         }),
       ],
-      attempts: [attempt({ attempt_id: 'at-1', objective_ids: ['obj-1'], transfer_level: 'recall', occurred_at: '2026-07-01T11:00:00Z' })],
+      attempts: [
+        attempt({ attempt_id: 'at-1', objective_ids: ['obj-1'], transfer_level: 'recall', occurred_at: '2026-07-01T11:00:00Z', source_intervention_id: 'iv-1' }),
+        attempt({ attempt_id: 'at-2', objective_ids: ['obj-1'], transfer_level: 'recall', occurred_at: '2026-07-01T11:00:00Z', source_intervention_id: 'iv-2' }),
+      ],
       diagnosisBuilder: builder('developing', 'recall'),
       asOf,
     })
@@ -364,8 +402,10 @@ describe('buildInterventionOutcomes', () => {
     const above = buildInterventionOutcomes({
       proposals: [proposal({ items: itemize(1) }), proposal({ items: itemize(2) })],
       attempts: [
-        attempt({ attempt_id: 'a1', objective_ids: ['obj-1'], transfer_level: 'recall', occurred_at: '2026-07-01T11:00:00Z' }),
-        attempt({ attempt_id: 'a2', objective_ids: ['obj-2'], transfer_level: 'recall', occurred_at: '2026-07-01T11:00:00Z' }),
+        attempt({ attempt_id: 'a1', objective_ids: ['obj-1'], transfer_level: 'recall', occurred_at: '2026-07-01T11:00:00Z', source_intervention_id: 'iv-1-1' }),
+        attempt({ attempt_id: 'a2', objective_ids: ['obj-2'], transfer_level: 'recall', occurred_at: '2026-07-01T11:00:00Z', source_intervention_id: 'iv-2-1' }),
+        attempt({ attempt_id: 'a3', objective_ids: ['obj-1'], transfer_level: 'recall', occurred_at: '2026-07-01T11:00:00Z', source_intervention_id: 'iv-1-2' }),
+        attempt({ attempt_id: 'a4', objective_ids: ['obj-2'], transfer_level: 'recall', occurred_at: '2026-07-01T11:00:00Z', source_intervention_id: 'iv-2-2' }),
       ],
       diagnosisBuilder: builder('supported', 'recall'),
       asOf,
@@ -399,7 +439,7 @@ describe('buildInterventionOutcomes', () => {
     }
     const even = buildInterventionOutcomes({
       proposals: [mk(1)],
-      attempts: [attempt({ attempt_id: 'at-1', objective_ids: ['obj-1'], transfer_level: 'recall', occurred_at: '2026-07-01T11:00:00Z' })],
+      attempts: [attempt({ attempt_id: 'at-1', objective_ids: ['obj-1'], transfer_level: 'recall', occurred_at: '2026-07-01T11:00:00Z', source_intervention_id: 'iv-a-0' })],
       diagnosisBuilder: builder('developing', 'recall'),
       asOf,
     })
@@ -407,7 +447,13 @@ describe('buildInterventionOutcomes', () => {
 
     const odd = buildInterventionOutcomes({
       proposals: [mk(3)],
-      attempts: [attempt({ attempt_id: 'at-1', objective_ids: ['obj-1'], transfer_level: 'recall', occurred_at: '2026-07-01T11:00:00Z' })],
+      attempts: [0, 1, 2].map(i => attempt({
+        attempt_id: `at-${i + 1}`,
+        objective_ids: ['obj-1'],
+        transfer_level: 'recall',
+        occurred_at: '2026-07-01T11:00:00Z',
+        source_intervention_id: `iv-a-${i}`,
+      })),
       diagnosisBuilder: builder('developing', 'recall'),
       asOf,
     })

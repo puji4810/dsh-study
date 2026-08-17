@@ -23,7 +23,7 @@ dsh 的依赖按 profile 隔离，因此只需安装到实际使用的 profile�
 插件在 `ctx.tools` 上注册两个工具：
 
 - `study_activity(resource, action, data?, vault_path?, project_id?)` — 状态接口：项目、日程、笔记、复习、尝试与计划提案。规范保存动作写入前先校验；`review.submit` 同时负责证据记录与复习间隔推进。
-- `study_coach(action, scope?, data?, vault_path?, project_id?)` — 证据投影与会话运行时：`start`/`advance`/`snapshot`/`finish` 驱动一份学习契约；`diagnose`、`summarize`、`recommend`、`prioritize`、`propose_plan`、`evaluate_interventions`、`evaluate_adherence`、`generate_probe`、`propose_pattern` 从不可变尝试记录推导判断。
+- `study_coach(action, scope?, data?, vault_path?, project_id?)` — 证据投影与会话运行时：`start`/`start_intervention`/`advance`/`snapshot`/`finish` 驱动一份学习契约；`diagnose`、`summarize`、`recommend`、`prioritize`、`propose_plan`、`evaluate_interventions`、`evaluate_adherence`、`generate_probe`、`propose_pattern` 从不可变尝试记录推导判断。
 
 两个工具都以 StudyOS 信封 — `{ ok, data?, error?: { code, message, details? }, warnings }` — 作为规范返回值。领域失败是 `ok: false` 值而非抛出的异常；稳定错误码与 Python 插件一致（`SESSION_NOT_FOUND`、`PROPOSAL_FINGERPRINT_MISMATCH`、`BROKEN_WIKILINKS`、…）。各工作流的操作形态由 `prompt_context.load` 返回的操作指南承载，因此两个工具 schema 保持窄小。
 
@@ -65,11 +65,11 @@ Markdown 笔记（概念、模式、带复习 frontmatter 的例题）与 `.Stud
 
 ## Web 面板
 
-侧栏底部入口打开按工作区隔离的 StudyOS 面板。面板展示实际 Vault、所有有效项目、当前项目、日程与尝试数量，以及优先级最高的十条到期复习。切换项目只更新该工作区的 `.StudyOS/projects/active.json`；面板投影本身不落盘。
+侧栏底部入口打开按工作区隔离的 StudyOS 面板，可查看项目、阶段日程、日历事件与到期复习。新增的**计划**视图贯通完整干预流程：选择证据推导或自定义学习窗口，添加忙碌时段和每日上限，预览带证据理由的优先队列，按项调整顺序、延期、目标日程、开始时间与时长，然后显式保存、接受/拒绝并写入 Schedule。日程调整不会改写证据分数；草稿约束一旦变化，必须重新预览后才能决策。切换项目只更新该工作区的 `.StudyOS/projects/active.json`；只读面板投影本身不落盘。
 
 ## 干预规划
 
-`study_coach.propose_plan` 推导干预队列（每个活跃目标一条有界的、有证据依据的建议，按验证状态、证据新旧、截止日期与推荐器自身的测量记录打分），并把它投影到学习者证据推导出的学习窗口内的一天具体事件上。产物是计划提案；接受只记录决策而不改动 Schedule，`plan_proposal.apply` 只写事件、不碰其他任何字段。依从性与成效测量回馈到容量与优先级校准，每项都受样本门槛与边界约束。
+`study_coach.propose_plan` 仍保持干预队列由证据确定、结果可复现，但把日历投影拆成可选的 `data.scheduling` 层。调用方可以提供 `target_date`、一个或多个本地时间 `windows`、`busy` 时段、休息间隔、每日分钟上限和有下限的自动缩短；agent 在先读取 `prioritize` 后，还可以按 Intervention id 调整顺序、延期或指定日程/开始时间/时长，而不能改写证据原因和优先级。已有 Schedule 事件会被视为硬冲突，且可以反复调用只读的 `propose_plan` 比较不同方案。使用 `plan_proposal.save` 保存预览，或在项目本地当天用带相同排期参数的 `plan_proposal.ensure_today` 幂等保存；随后必须由学习者明确接受或拒绝。`study_coach.start_intervention` 会优先消费提案中实际排定的时长，并且只允许通过 `execution` 调整时间预算和协助等级，目标、证据维度与来源链保持不变。`plan_proposal.apply` 仍只是可选日历投影：先预检所有目标 Schedule，只写事件，提交失败时回滚。只有带精确来源的执行证据才会进入干预效果校准；依从性与成效信号仍受样本门槛与边界约束。
 
 ## 间隔重复
 

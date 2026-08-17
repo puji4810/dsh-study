@@ -625,3 +625,483 @@
   color: var(--dsw-alias-label-secondary);
   font-size: 11px;
 }
+
+/* ---- intervention planning workspace ---- */
+.planWorkspace {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 24px;
+}
+
+.planLead,
+.planHelp {
+  margin: 3px 0 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.planProject {
+  flex: none;
+  padding: 3px 9px;
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+}
+
+.planSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.planSection .sectionTitle {
+  margin: 0;
+}
+
+.planFormGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.field,
+.inlineField,
+.compactField,
+.windowRow label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+}
+
+.field input,
+.inlineField input,
+.compactField input,
+.compactField select,
+.windowRow input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 32px;
+  padding: 5px 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  outline: none;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 12px;
+}
+
+.field input:focus,
+.inlineField input:focus,
+.compactField input:focus,
+.compactField select:focus,
+.windowRow input:focus {
+  border-color: var(--dsw-alias-state-business-primary);
+}
+
+.toggleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.toggleRow input,
+.compactToggle input {
+  margin: 3px 0 0;
+  accent-color: var(--dsw-alias-state-business-primary);
+}
+
+.toggleRow span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toggleRow strong {
+  color: var(--dsw-alias-label-primary);
+  font-weight: 600;
+}
+
+.toggleRow small {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.windowEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+}
+
+.windowEditor legend {
+  padding: 0 4px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.windowRow {
+  display: grid;
+  grid-template-columns: minmax(100px, 150px) 16px minmax(100px, 150px) 28px;
+  align-items: end;
+  gap: 7px;
+}
+
+.windowArrow {
+  padding-bottom: 8px;
+  color: var(--dsw-alias-label-caption);
+  text-align: center;
+}
+
+.removeButton,
+.linkButton,
+.orderButtons button {
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.removeButton {
+  width: 28px;
+  height: 32px;
+  padding: 0;
+}
+
+.removeButton:disabled,
+.orderButtons button:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.linkButton {
+  align-self: flex-start;
+  padding: 4px 8px;
+  color: var(--dsw-alias-state-business-primary);
+  font-size: 11px;
+}
+
+.removeButton:hover:not(:disabled),
+.linkButton:hover,
+.orderButtons button:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.agentControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.inlineField {
+  width: 130px;
+}
+
+.planActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.primaryButton,
+.secondaryButton,
+.dangerButton {
+  min-height: 32px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primaryButton {
+  border: 1px solid var(--dsw-alias-state-business-primary);
+  background: var(--dsw-alias-state-business-primary);
+  color: white;
+}
+
+.secondaryButton {
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+}
+
+.dangerButton {
+  border: 1px solid var(--dsw-alias-state-error-primary);
+  background: transparent;
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.dangerButton:disabled {
+  cursor: default;
+  opacity: 0.42;
+}
+
+.staleHint {
+  color: var(--dsw-alias-state-warn-label);
+  font-size: 11px;
+}
+
+.success {
+  margin: 0;
+  color: var(--dsw-alias-state-success-primary);
+  font-size: 12px;
+}
+
+.interventionList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.interventionCard {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-base);
+}
+
+.interventionDeferred {
+  opacity: 0.62;
+}
+
+.interventionHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rank {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.interventionIdentity {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.interventionIdentity strong {
+  overflow: hidden;
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.interventionIdentity span {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+}
+
+.priorityBadge,
+.statusBadge {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.priorityBadge[data-band='high'] {
+  background: var(--dsw-alias-state-error-tertiary);
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.priorityBadge[data-band='medium'] {
+  background: var(--dsw-alias-state-warn-tertiary);
+  color: var(--dsw-alias-state-warn-label);
+}
+
+.factorRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+}
+
+.reason {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  line-height: 17px;
+}
+
+.interventionControls {
+  display: grid;
+  grid-template-columns: auto auto minmax(120px, 1fr) minmax(100px, 0.6fr) minmax(100px, 0.6fr);
+  align-items: end;
+  gap: 8px;
+  padding-top: 3px;
+}
+
+.orderButtons {
+  display: flex;
+  gap: 4px;
+  padding-bottom: 1px;
+}
+
+.orderButtons button {
+  width: 28px;
+  height: 32px;
+  padding: 0;
+}
+
+.compactToggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.planSummaryHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.planSummaryTitle {
+  margin: 0;
+  color: var(--dsw-alias-label-primary);
+  font-size: 15px;
+}
+
+.statusBadge[data-status='accepted'] {
+  background: var(--dsw-alias-state-success-tertiary);
+  color: var(--dsw-alias-state-success-primary);
+}
+
+.statusBadge[data-status='rejected'] {
+  background: var(--dsw-alias-state-error-tertiary);
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.planMetrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+}
+
+.plannedEvents {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plannedEvents li {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-base);
+}
+
+.plannedEvents time {
+  color: var(--dsw-alias-state-business-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.plannedEvents div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.plannedEvents strong {
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+}
+
+.plannedEvents span {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+}
+
+.unplacedBox {
+  padding: 9px 10px;
+  border: 1px solid var(--dsw-alias-state-warn-primary);
+  border-radius: 8px;
+  color: var(--dsw-alias-state-warn-label);
+  font-size: 11px;
+}
+
+.unplacedBox ul {
+  margin: 5px 0 0;
+  padding-left: 18px;
+}
+
+@media (max-width: 820px) {
+  .planFormGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .interventionControls {
+    grid-template-columns: auto auto minmax(120px, 1fr);
+  }
+
+  .compactField {
+    grid-column: span 1;
+  }
+}
