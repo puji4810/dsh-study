@@ -1,7 +1,7 @@
 {
   "name": "@puji4810/dsh-study",
   "description": "Workspace-scoped StudyOS learning tools and Web panel for DeepSeek Harness",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "type": "module",
   "license": "MIT",
   "repository": {
