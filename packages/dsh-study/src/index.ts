@@ -1,6 +1,6 @@
 /**
  * The StudyOS plugin: registers the `study_activity` and `study_coach` tools on
- * `ctx.tools`, the eleven routed skills on `ctx.skills` when that service is
+ * `ctx.tools`, the twelve StudyOS skills on `ctx.skills` when that service is
  * composed, and injects the active learning-session context after session
  * lifecycle calls. Each agent's dsh workspace is its default Vault; optional
  * `vaultPath` and per-call `vault_path` values serve non-workspace callers and

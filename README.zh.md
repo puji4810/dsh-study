@@ -18,6 +18,8 @@ dsh plugin --profile headless add @puji4810/dsh-study
 
 dsh 的依赖按 profile 隔离，因此只需安装到实际使用的 profile。升级时把 `add` 换成 `update`。
 
+安装同时会带上 `@puji4810/dsh-tikz`。在 Web profile 中，TikZ 代码块由 TikZJax 渲染，并默认启用 `pgfplots` 与 `\\pgfplotsset{compat=1.12}`。
+
 ## 功能
 
 插件在 `ctx.tools` 上注册两个工具：
@@ -27,7 +29,7 @@ dsh 的依赖按 profile 隔离，因此只需安装到实际使用的 profile�
 
 两个工具都以 StudyOS 信封 — `{ ok, data?, error?: { code, message, details? }, warnings }` — 作为规范返回值。领域失败是 `ok: false` 值而非抛出的异常；稳定错误码与 Python 插件一致（`SESSION_NOT_FOUND`、`PROPOSAL_FINGERPRINT_MISMATCH`、`BROKEN_WIKILINKS`、…）。各工作流的操作形态由 `prompt_context.load` 返回的操作指南承载，因此两个工具 schema 保持窄小。
 
-当 `skills` 服务被组合时，插件还注册八个路由技能（`study-os`、`study-plan`、`study-organize`、`study-review`、`study-teach`、`study-lesson`、`study-assessment`、`study-grill`）与三个域包技能（`study-engineering`、`study-kaoyan`、`study-research`）。
+当 `skills` 服务被组合时，插件还注册九个路由技能（`study-os`、`study-plan`、`study-organize`、`study-review`、`study-teach`、`study-lesson`、`study-tikz`、`study-assessment`、`study-grill`）与三个域包技能（`study-engineering`、`study-kaoyan`、`study-research`）。安装 `@puji4810/dsh-study` 时也会自动安装其 `@puji4810/dsh-tikz` 依赖，从而在 Web 客户端启用 TikZ 图形。
 
 ## Vault
 
@@ -81,7 +83,7 @@ Markdown 笔记（概念、模式、带复习 frontmatter 的例题）与 `.Stud
 
 #### What the model sees
 
-两个工具 schema 及其 Python 插件描述，通过 `defineTool` 注册。当 skills 服务被组合时，十一个 StudyOS 技能也会出现在技能目录中。`study_coach.start` 或 `advance` 之后，插件通过 `agent.inject` 为下一次请求注入活跃会话上下文（`[StudyOS active learning session — turn-local context]` 加有界的会话载荷）。
+两个工具 schema 及其 Python 插件描述，通过 `defineTool` 注册。当 skills 服务被组合时，十二个 StudyOS 技能也会出现在技能目录中。`study_coach.start` 或 `advance` 之后，插件通过 `agent.inject` 为下一次请求注入活跃会话上下文（`[StudyOS active learning session — turn-local context]` 加有界的会话载荷）。
 
 ##### `study_activity` description
 

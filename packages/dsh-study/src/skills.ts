@@ -12,11 +12,11 @@ export interface StudySkill {
   content: string
 }
 
-/** The eight routed skills in ladder order, then the three domain-pack prompt skills. */
+/** The nine routed skills in ladder order, then the three domain-pack prompt skills. */
 export const STUDY_SKILLS: readonly StudySkill[] = [
   {
-    name: 'study-assessment',
-    description: 'Analyze StudyOS exams and mistakes.',
+    name: "study-assessment",
+    description: "Analyze StudyOS exams and mistakes.",
     content: `
 # StudyOS Assessment
 
@@ -93,8 +93,8 @@ reflects demonstrated work rather than an in-progress conversation.
 `,
   },
   {
-    name: 'study-engineering',
-    description: 'Guide engineering and skill learning with StudyOS.',
+    name: "study-engineering",
+    description: "Guide engineering and skill learning with StudyOS.",
     content: `
 # StudyOS Engineering Domain Pack
 
@@ -188,8 +188,8 @@ something. Activities are shaped by \`EngineeringActivityAdapter\`.
 `,
   },
   {
-    name: 'study-grill',
-    description: 'Bridge grilling sessions into StudyOS decisions.',
+    name: "study-grill",
+    description: "Bridge grilling sessions into StudyOS decisions.",
     content: `
 # StudyOS Grill
 
@@ -215,8 +215,8 @@ records; never mutate system prompts.
 `,
   },
   {
-    name: 'study-kaoyan',
-    description: 'Guide 考研 learning with StudyOS.',
+    name: "study-kaoyan",
+    description: "Guide 考研 learning with StudyOS.",
     content: `
 # StudyOS 考研 Domain Pack
 
@@ -307,8 +307,8 @@ learner's real plan is a silent error that only surfaces months later.
 `,
   },
   {
-    name: 'study-lesson',
-    description: 'Create visual StudyOS lesson artifacts.',
+    name: "study-lesson",
+    description: "Create visual StudyOS lesson artifacts.",
     content: `
 # StudyOS VisualLesson
 
@@ -330,8 +330,8 @@ action="load", data={"intent":"teaching"})\`; never mutate system prompts.
 `,
   },
   {
-    name: 'study-organize',
-    description: 'Organize problems into StudyOS notes.',
+    name: "study-organize",
+    description: "Organize problems into StudyOS notes.",
     content: `
 # StudyOS Organize
 
@@ -389,8 +389,8 @@ batch just written, so it is not part of a routine organizing pass.
 `,
   },
   {
-    name: 'study-os',
-    description: 'Route StudyOS learning workflows.',
+    name: "study-os",
+    description: "Route StudyOS learning workflows.",
     content: `
 # StudyOS Router
 
@@ -400,7 +400,8 @@ batch just written, so it is not part of a routine organizing pass.
 Route plans and next steps to \`study-plan\`, organization to \`study-organize\`,
 recall to \`study-review\`, teaching to \`study-teach\`, and diagnosis to
 \`study-assessment\`. Route Domain Packs to their matching skill; use
-\`study-lesson\` for visuals and \`study-grill\` for strategic decisions.
+\`study-lesson\` for interactive visual artifacts, \`study-tikz\` for mathematical
+diagrams in Web explanations, and \`study-grill\` for strategic decisions.
 
 ## Flow
 
@@ -453,8 +454,6 @@ WikiLink misses. Audit with \`note.graph\`.
 
 Start a focused Session once with the complete minimal contract:
 
-Do not send \`created_at\`; the Session runtime stamps the contract and activities.
-
 \`\`\`python
 study_coach(action="start", data={"session_id": "learn-topic-001", "contract":
   {"mode": "learn", "objective": "observable capability",
@@ -482,8 +481,8 @@ or save a Schedule.
 `,
   },
   {
-    name: 'study-plan',
-    description: 'Create, revise, and persist StudyOS learning schedules.',
+    name: "study-plan",
+    description: "Create, revise, and persist StudyOS learning schedules.",
     content: `
 # StudyOS Planning
 
@@ -499,17 +498,9 @@ or save a Schedule.
    curriculum first.
 2. Map observable objectives, prerequisites, sources, time, and a checkpoint.
    Never invent dates, scores, or availability; keep topic names stable.
-3. For advice, “how should I plan?”, or an explicit draft, call
-   \`study_coach.propose_plan\` and return a compact preview without mutation;
-   use \`study_coach.prioritize\` when the learner only wants ranked next actions.
-   Keep the evidence-derived queue intact, but pass known availability through
-   \`data.scheduling\`. The learner or agent may set local \`windows\`, \`busy\`
-   periods, a daily cap and break, permit bounded duration fitting, or — after
-   reading \`prioritize\` — reorder, defer, and place specific Intervention ids.
-   Re-run the read-only proposal to compare alternatives instead of hand-editing
-   evidence reasons or priority scores.
-   An imperative request to create, complete, update, register, or add a
-   **StudyOS** plan/calendar authorizes persistence.
+3. For advice, “how should I plan?”, or an explicit draft, return a compact
+   draft without mutation. An imperative request to create, complete, update,
+   register, or add a **StudyOS** plan/calendar authorizes persistence.
 4. Missing daily time slots never block a long-term Schedule: save dated
    \`phases\` with \`events: []\` and add events only when times are known.
 5. Do not end with “I will register it next.” Continue in the same turn
@@ -527,13 +518,6 @@ List pending proposals before saving one. Only an explicit learner decision
 permits accept/reject. Apply an accepted proposal with \`plan_proposal.apply\`,
 which writes its day-plan events and nothing else. Changing \`phases\` or \`range\`
 is still \`schedule.validate\` then \`schedule.save\`.
-
-Execute an accepted item with \`study_coach.start_intervention\`; it derives the
-Session contract from the durable proposal and carries proposal/intervention
-provenance into every recorded attempt. It consumes the concrete day-plan event
-duration when present. \`data.execution\` may override only time budget and
-assistance level; it may not replace the objective, evidence target, or provenance.
-Do not rebuild that contract by hand.
 <!-- prompt-context:end -->
 
 ## Reference
@@ -581,19 +565,13 @@ Use \`study_coach.prioritize\` to rank a project-wide Intervention Queue and
 stored through \`study_activity\` with \`resource="plan_proposal"\`, which supports
 \`save\`, \`list\`, \`read\`, \`accept\`, and \`reject\`.
 
-\`propose_plan.data.scheduling\` may provide \`target_date\`, local \`windows\`,
-\`busy\` periods, \`break_minutes\`, \`max_minutes\`, bounded duration adjustment,
-and Intervention-specific order/defer/placement hints. Existing Schedule events
-remain hard conflicts. \`ensure_today\` accepts the same controls but never a
-different target date.
-
 Acceptance records a decision and never mutates a Schedule on its own. Cron
 sessions may save proposals but can never decide them or save Schedules.
 `,
   },
   {
-    name: 'study-research',
-    description: 'Guide research and replication learning with StudyOS.',
+    name: "study-research",
+    description: "Guide research and replication learning with StudyOS.",
     content: `
 # StudyOS Research Domain Pack
 
@@ -656,8 +634,8 @@ the Session lifecycle.
 `,
   },
   {
-    name: 'study-review',
-    description: 'Run flexible StudyOS spaced-repetition reviews.',
+    name: "study-review",
+    description: "Run flexible StudyOS spaced-repetition reviews.",
     content: `
 # StudyOS Review
 
@@ -723,8 +701,8 @@ partial, or incorrect result. Closing future steps never erases prior evidence.
 `,
   },
   {
-    name: 'study-teach',
-    description: 'Teach through StudyOS learning records.',
+    name: "study-teach",
+    description: "Teach through StudyOS learning records.",
     content: `
 # StudyOS Teach
 
@@ -786,6 +764,65 @@ Everything outside those markers is free: put explanation, examples, and
 rationale here rather than shrinking the loop above. Do not write either marker
 string anywhere else in this file — a second pair would be read as a second
 fragment region.
+`,
+  },
+  {
+    name: "study-tikz",
+    description: "Create TikZ diagrams for mathematical explanations in StudyOS Web.",
+    content: `
+# StudyOS TikZ Diagrams
+
+Use when a mathematical explanation benefits from a precise geometric figure,
+such as a line integral, surface integral, orientation, vector field, region,
+coordinate construction, or a multi-step spatial relation. Route ordinary
+prose or a quick ASCII sketch to \`study-teach\`; use this skill when the figure
+itself carries reasoning.
+
+<!-- prompt-context:begin -->
+## Web TikZ Contract
+
+1. Put one complete diagram in a fenced \`tikz\` block. The dsh Web client
+   renders it in-browser with TikZJax; do not return an SVG placeholder or ask
+   the learner to compile LaTeX locally.
+2. The environment already loads TikZ. \`pgfplots\` is also available by default,
+   and dsh adds \`\\pgfplotsset{compat=1.12}\`. Do not add packages that are not
+   needed. If a package is required explicitly, put \`\\usepackage{...}\` at the
+   beginning of the fence, before \`\\begin{document}\`.
+3. \`\\begin{document}\`/\`\\end{document}\` wrappers are accepted. Keep the actual
+   drawing inside one \`tikzpicture\`; use \`\\usetikzlibrary{...}\` when a library
+   such as \`calc\`, \`angles\`, \`quotes\`, or \`arrows.meta\` is needed.
+4. Make the diagram self-explanatory: label axes, points, orientation arrows,
+   boundaries, and the quantity being illustrated. State any non-obvious
+   convention in one sentence outside the fence.
+5. For a line or surface integral, show the domain and orientation first, then
+   the path/surface, tangent or normal direction, and any projection or
+   parameter marker used in the explanation. Use a TikZ figure when it reduces
+   ambiguity; do not add decorative figures to routine arithmetic.
+6. After presenting the figure, explain what each marked object means and check
+   that the orientation in the picture matches the sign convention in the
+   formula. A rendered figure is an explanation aid, not evidence that the
+   learner understands it; verify understanding separately with a question or
+   worked reconstruction.
+<!-- prompt-context:end -->
+
+## Practical Template
+
+\`\`\`tikz
+\\usetikzlibrary{arrows.meta,calc}
+\\begin{document}
+\\begin{tikzpicture}[>=Stealth, thick]
+  \\draw[->] (-0.2,0) -- (4,0) node[right] {$x$};
+  \\draw[->] (0,-0.2) -- (0,3) node[above] {$y$};
+  \\draw[blue] (0.5,0.5) .. controls (1.5,2.5) and (2.5,2.5) .. (3.5,0.8);
+  \\draw[->,red] (1.1,1.7) -- (1.35,1.95) node[above] {$\\mathbf t$};
+  \\node at (2,0.25) {$C$};
+\\end{tikzpicture}
+\\end{document}
+\`\`\`
+
+If the figure uses \`pgfplots\`, keep the \`axis\` environment small and label the
+domain and axes. Prefer TikZ primitives for a single curve, region, path, or
+orientation arrow; they render faster and make the geometric intent clearer.
 `,
   },
 ]

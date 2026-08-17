@@ -43,7 +43,7 @@ export interface StudySkill {
   content: string
 }
 
-/** The eight routed skills in ladder order, then the three domain-pack prompt skills. */
+/** The nine routed skills in ladder order, then the three domain-pack prompt skills. */
 export const STUDY_SKILLS: readonly StudySkill[] = [
 `
 for (const skill of skills) {

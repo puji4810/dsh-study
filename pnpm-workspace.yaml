@@ -1,2 +1,5 @@
 packages:
   - packages/*
+
+minimumReleaseAgeExclude:
+  - '@puji4810/dsh-study'
