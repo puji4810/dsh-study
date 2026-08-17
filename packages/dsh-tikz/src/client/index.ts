@@ -16,6 +16,11 @@ export function apply(_ctx: ClientContext): () => void {
   const script = document.createElement('script')
   script.id = SCRIPT_ID
   script.src = `${window.location.origin}/dsh-tikz/tikzjax.js`
+  const fonts = document.createElement('link')
+  fonts.id = 'dsh-tikz-fonts'
+  fonts.rel = 'stylesheet'
+  fonts.href = `${window.location.origin}/dsh-tikz/fonts.css`
+  document.head.appendChild(fonts)
   document.head.appendChild(script)
   const process = () => {
     const hosts = new Set<HTMLElement>()
@@ -66,6 +71,7 @@ export function apply(_ctx: ClientContext): () => void {
     observer.disconnect()
     failureObserver.disconnect()
     script.remove()
+    fonts.remove()
     for (const timer of timers) window.clearTimeout(timer)
     timers.clear()
     console.log = originalConsoleLog

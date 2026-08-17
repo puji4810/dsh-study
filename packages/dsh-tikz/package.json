@@ -1,6 +1,6 @@
 {
   "name": "@puji4810/dsh-tikz",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "TikZ code-fence renderer for the DeepSeek Harness web client, powered by TikZJax",
   "type": "module",
   "license": "MIT",
