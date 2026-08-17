@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { StudyDashboardOverview } from '@puji4810/dsh-study/types'
 
@@ -10,6 +11,10 @@ import { zh } from '../../src/client/locales.ts'
 
 vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   IconSkillOutline16: ({ size }: { size?: number }) => <svg data-studyos-icon width={size} height={size} />,
+  IconChevronLeftOutline14: () => <svg />,
+  IconChevronRightOutline14: () => <svg />,
+  IconCloseOutline16: () => <svg />,
+  Modal: ({ open, children }: { open: boolean; children?: ReactNode }) => (open ? <div data-studyos-modal>{children}</div> : null),
 }))
 
 afterEach(cleanup)
@@ -24,6 +29,21 @@ const overview: StudyDashboardOverview = {
     phase: 'foundation',
     scheduleCount: 2,
     attemptCount: 7,
+    trackCount: 3,
+    objectiveCount: 4,
+    subjectLabels: ['高等数学', '线性代数', '概率论'],
+    schedules: [{
+      scheduleId: 's1',
+      title: '主线',
+      rangeStart: '2026-08-01',
+      rangeEnd: '2026-10-01',
+      phaseCount: 2,
+      eventCount: 0,
+      phases: [
+        { id: 'a', title: 'A段', start: '2026-08-01', end: '2026-08-15', goal: '基础', effortMinutes: 3600, status: 'completed' },
+        { id: 'b', title: 'B段', start: '2026-08-16', end: '2026-09-01', goal: '强化', effortMinutes: 7200, status: 'planned' },
+      ],
+    }],
   }, {
     projectId: 'physics',
     title: '物理',
@@ -31,6 +51,10 @@ const overview: StudyDashboardOverview = {
     phase: 'practice',
     scheduleCount: 1,
     attemptCount: 4,
+    trackCount: 1,
+    objectiveCount: 2,
+    subjectLabels: ['力学'],
+    schedules: [],
   }],
   dueReviewCount: 1,
   dueReviews: [{
@@ -40,6 +64,7 @@ const overview: StudyDashboardOverview = {
     reviewCount: 3,
     concepts: ['derivative'],
   }],
+  calendar: { start: '2026-08-01', end: '2026-08-31', days: [] },
 }
 
 function props(): StudyOSPanelProps {
@@ -63,7 +88,7 @@ function props(): StudyOSPanelProps {
 }
 
 describe('StudyOSPanel', () => {
-  it('loads the current workspace and selects another project', async () => {
+  it('opens the big window and shows projects and the active schedule arrangement', async () => {
     const panelProps = props()
     render(<StudyOSPanel {...panelProps} />)
 
@@ -71,13 +96,27 @@ describe('StudyOSPanel', () => {
     expect(trigger.querySelector('svg')).toBeTruthy()
     expect(trigger.textContent).not.toContain('📚')
     fireEvent.click(trigger)
-    expect(await screen.findByText('/notes/math')).toBeTruthy()
-    expect(screen.getByText('数学分析')).toBeTruthy()
-    expect(screen.getByText('导数回忆')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: '设为当前项目' }))
+    // The modal window opens with the project listed and its active detail shown.
+    expect((await screen.findAllByText('数学分析')).length).toBeGreaterThan(0)
+    expect(screen.getByText('物理')).toBeTruthy()
+    // The active project's schedule arrangement (phases) is shown in the detail pane.
+    expect(screen.getByText('主线')).toBeTruthy()
+    expect(screen.getByText('A段')).toBeTruthy()
+    expect(screen.getByText('B段')).toBeTruthy()
+  })
+
+  it('selecting another project makes it active through the Remote call', async () => {
+    const panelProps = props()
+    render(<StudyOSPanel {...panelProps} />)
+    fireEvent.click(screen.getByRole('button', { name: 'StudyOS 学习面板' }))
+
+    // Rail item for the physics project.
+    fireEvent.click(await screen.findByText('物理'))
     expect(panelProps.selectProject).toHaveBeenCalledWith('session-1', 'physics')
-    expect(await screen.findByText('当前')).toBeTruthy()
+    // The math detail (its phases) is replaced by physics' (empty) detail.
+    await screen.findByText('日程安排')
+    expect(screen.queryByText('A段')).toBeNull()
   })
 })
 

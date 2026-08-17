@@ -9,7 +9,7 @@ import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import type { StudyNote } from '../src/types.ts'
+import type { StudyNote, StudySchedule } from '../src/types.ts'
 import type { HandlerEnv } from '../src/handlers/dispatch.ts'
 
 /** A fresh temp vault directory. */
@@ -66,6 +66,29 @@ export function writeNote(vault: string, relativePath: string, content: string):
   if (parent) mkdirSync(join(vault, parent), { recursive: true })
   writeFileSync(path, content, 'utf8')
   return relativePath
+}
+
+/** Write a study_schedule.v1 file under a project's schedules directory. */
+export function writeSchedule(vault: string, projectId: string, schedule: StudySchedule): void {
+  const dir = join(vault, '.StudyOS', 'projects', projectId, 'schedules')
+  mkdirSync(dir, { recursive: true })
+  writeFileSync(join(dir, `${schedule.schedule_id}.json`), `${JSON.stringify(schedule, null, 2)}\n`)
+}
+
+/** A minimal scheduled-event row for a study_schedule fixture. */
+export function scheduledEvent(overrides: Partial<StudySchedule['events'][number]> & { start: string }): StudySchedule['events'][number] {
+  return {
+    id: overrides.id ?? `ev-${overrides.start}`,
+    title: overrides.title ?? 'Study session',
+    subject_id: overrides.subject_id ?? 't1',
+    type: overrides.type ?? 'practice',
+    start: overrides.start,
+    end: overrides.end ?? overrides.start,
+    duration_minutes: overrides.duration_minutes ?? 60,
+    goals: overrides.goals ?? ['produce evidence'],
+    status: overrides.status ?? 'planned',
+    ...(overrides.source_curriculum !== undefined ? { source_curriculum: overrides.source_curriculum } : {}),
+  }
 }
 
 /** A minimal example-note markdown body with review frontmatter. */

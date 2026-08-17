@@ -21,6 +21,28 @@ import type {
 /** An untyped study record: validated JSON before narrowing. */
 export type StudyData = Record<string, unknown>
 
+/** One phase (date-banded goal) inside a project Schedule. */
+export interface StudyDashboardPhase {
+  id: string
+  title: string
+  start: string
+  end: string
+  goal: string
+  effortMinutes?: number
+  status?: string
+}
+
+/** One Schedule (a study track / arrangement) inside a project. */
+export interface StudyDashboardSchedule {
+  scheduleId: string
+  title: string
+  rangeStart: string
+  rangeEnd: string
+  phaseCount: number
+  eventCount: number
+  phases: StudyDashboardPhase[]
+}
+
 /** One project row shown by the StudyOS panel. */
 export interface StudyDashboardProject {
   projectId: string
@@ -30,6 +52,54 @@ export interface StudyDashboardProject {
   deadline?: string
   scheduleCount: number
   attemptCount: number
+  /** Number of subject tracks (v2) or subjects (v1) on the manifest. */
+  trackCount: number
+  /** Number of objectives this project declares (v2 only). */
+  objectiveCount: number
+  /** Labels of the project's subject tracks / subjects, for display. */
+  subjectLabels: string[]
+  /** The project's Schedules (日程安排), each carrying its phases. */
+  schedules: StudyDashboardSchedule[]
+}
+
+/** One scheduled study event placed on a calendar day. */
+export interface StudyDashboardCalendarEvent {
+  id: string
+  title: string
+  projectId: string
+  projectTitle: string
+  scheduleId: string
+  scheduleTitle: string
+  type: string
+  status: string
+  start: string
+  end: string
+}
+
+/** A date-anchored marker rendered on the calendar (deadlines, exams, phases). */
+export interface StudyDashboardMilestone {
+  kind: 'deadline' | 'exam' | 'phase'
+  label: string
+  projectId: string
+  projectTitle: string
+  date: string
+}
+
+/** One calendar day's aggregate of events, milestones, and due reviews. */
+export interface StudyDashboardCalendarDay {
+  date: string
+  events: StudyDashboardCalendarEvent[]
+  milestones: StudyDashboardMilestone[]
+  dueReviewCount: number
+}
+
+/** The StudyOS learning calendar projection for the panel. */
+export interface StudyDashboardCalendar {
+  /** The ISO range the returned data covers, inclusive. */
+  start: string
+  end: string
+  /** Days with any activity; empty dates carry no entry. */
+  days: StudyDashboardCalendarDay[]
 }
 
 /** One due-review row shown by the StudyOS panel. */
@@ -49,6 +119,8 @@ export interface StudyDashboardOverview {
   projects: StudyDashboardProject[]
   dueReviewCount: number
   dueReviews: StudyDashboardReview[]
+  /** Calendar projection covering the current month and the coming weeks. */
+  calendar: StudyDashboardCalendar
 }
 
 /** Version-aware reference to the exact source location supporting an activity or claim. */

@@ -13,7 +13,7 @@ const _deepseek_ai_dsh_studyos_studyos_overview_result$schema = z.object({
   'deadline': z.string().optional(),
   'scheduleCount': z.number(),
   'attemptCount': z.number(),
-})),
+}).passthrough()),
   'dueReviewCount': z.number(),
   'dueReviews': z.array(z.object({
   'path': z.string(),
@@ -22,7 +22,7 @@ const _deepseek_ai_dsh_studyos_studyos_overview_result$schema = z.object({
   'reviewCount': z.number(),
   'nextReviewAt': z.string().optional(),
   'concepts': z.array(z.string()),
-})),
+}).passthrough()),
 })
 const _deepseek_ai_dsh_studyos_studyos_selectProject_parameter_0$schema = z.intersection(z.string(), z.unknown())
 const _deepseek_ai_dsh_studyos_studyos_selectProject_parameter_1$schema = z.string()
@@ -37,7 +37,7 @@ const _deepseek_ai_dsh_studyos_studyos_selectProject_result$schema = z.object({
   'deadline': z.string().optional(),
   'scheduleCount': z.number(),
   'attemptCount': z.number(),
-})),
+}).passthrough()),
   'dueReviewCount': z.number(),
   'dueReviews': z.array(z.object({
   'path': z.string(),
@@ -46,7 +46,7 @@ const _deepseek_ai_dsh_studyos_studyos_selectProject_result$schema = z.object({
   'reviewCount': z.number(),
   'nextReviewAt': z.string().optional(),
   'concepts': z.array(z.string()),
-})),
+}).passthrough()),
 })
 
 export const TYPERT = {

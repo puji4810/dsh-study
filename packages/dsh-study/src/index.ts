@@ -304,5 +304,15 @@ export class StudyOSService extends TypertRemoteService {
 }
 
 export type { StudyEnvelope } from './errors.ts'
-export type { StudyDashboardOverview, StudyDashboardProject, StudyDashboardReview } from './types.ts'
+export type {
+  StudyDashboardOverview,
+  StudyDashboardProject,
+  StudyDashboardReview,
+  StudyDashboardSchedule,
+  StudyDashboardPhase,
+  StudyDashboardCalendar,
+  StudyDashboardCalendarDay,
+  StudyDashboardCalendarEvent,
+  StudyDashboardMilestone,
+} from './types.ts'
 export default StudyOSService
