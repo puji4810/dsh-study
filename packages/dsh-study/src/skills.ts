@@ -401,7 +401,8 @@ Route plans and next steps to \`study-plan\`, organization to \`study-organize\`
 recall to \`study-review\`, teaching to \`study-teach\`, and diagnosis to
 \`study-assessment\`. Route Domain Packs to their matching skill; use
 \`study-lesson\` for interactive visual artifacts, \`study-tikz\` for mathematical
-diagrams in Web explanations, and \`study-grill\` for strategic decisions.
+diagrams in Web explanations (send a \` \`\`\`tikz \` fence directly; it is Web-only,
+with no local LaTeX/PDF compilation), and \`study-grill\` for strategic decisions.
 
 ## Flow
 
@@ -768,7 +769,7 @@ fragment region.
   },
   {
     name: "study-tikz",
-    description: "Create TikZ diagrams for mathematical explanations in StudyOS Web.",
+    description: "Create Web-rendered TikZ diagrams for mathematical explanations in StudyOS; always return a tikz fence for dsh Web and never compile locally.",
     content: `
 # StudyOS TikZ Diagrams
 
@@ -779,30 +780,55 @@ prose or a quick ASCII sketch to \`study-teach\`; use this skill when the figure
 itself carries reasoning.
 
 <!-- prompt-context:begin -->
-## Web TikZ Contract
+## Web-only TikZ Contract
+
+TikZ is rendered by the dsh Web client, not by the agent's local TeX
+installation. Produce the diagram as a \` \`\`\`tikz \` fenced block in the answer
+so TikZJax can replace it with an SVG in the browser. The delivery is complete
+when that fence has been sent to Web; keep all compilation and rendering inside
+the Web client.
+
+Use the Web TikZ path exclusively: do not run \`pdflatex\`, \`xelatex\`,
+\`lualatex\`, \`latexmk\`, or any other local compiler; do not create a PDF, local
+SVG, image file, or compilation artifact as an intermediate result; and do not
+ask the learner to open or upload one. If a preview is needed, send the fence
+and inspect the Web-rendered result instead.
 
 1. Put one complete diagram in a fenced \`tikz\` block. The dsh Web client
-   renders it in-browser with TikZJax; do not return an SVG placeholder or ask
-   the learner to compile LaTeX locally.
+   renders it in-browser with TikZJax. Return the fence itself, rather than a
+   path to a compiled artifact.
 2. The environment already loads TikZ. \`pgfplots\` is also available by default,
    and dsh adds \`\\pgfplotsset{compat=1.12}\`. Do not add packages that are not
    needed. If a package is required explicitly, put \`\\usepackage{...}\` at the
    beginning of the fence, before \`\\begin{document}\`.
-3. \`\\begin{document}\`/\`\\end{document}\` wrappers are accepted. Keep the actual
+3. Keep the TikZ source ASCII/LaTeX-only: use LaTeX commands such as \`\\alpha\`
+   and \`\\text{}\` for labels, and put Chinese prose outside the fence. TikZJax's
+   bundled TeX fonts do not reliably compile raw CJK characters inside a
+   diagram.
+4. \`\\begin{document}\`/\`\\end{document}\` wrappers are accepted. Keep the actual
    drawing inside one \`tikzpicture\`; use \`\\usetikzlibrary{...}\` when a library
    such as \`calc\`, \`angles\`, \`quotes\`, or \`arrows.meta\` is needed.
-4. Make the diagram self-explanatory: label axes, points, orientation arrows,
+5. Make the diagram self-explanatory: label axes, points, orientation arrows,
    boundaries, and the quantity being illustrated. State any non-obvious
    convention in one sentence outside the fence.
-5. For a line or surface integral, show the domain and orientation first, then
+6. For a line or surface integral, show the domain and orientation first, then
    the path/surface, tangent or normal direction, and any projection or
    parameter marker used in the explanation. Use a TikZ figure when it reduces
    ambiguity; do not add decorative figures to routine arithmetic.
-6. After presenting the figure, explain what each marked object means and check
+7. After presenting the figure, explain what each marked object means and check
    that the orientation in the picture matches the sign convention in the
    formula. A rendered figure is an explanation aid, not evidence that the
    learner understands it; verify understanding separately with a question or
    worked reconstruction.
+8. Treat a complex \`pgfplots\` figure as an incremental artifact. First make one
+   small panel render (for example, one \`axis\` with a low \`samples\` count), then
+   add surfaces, sections, labels, and additional panels one layer at a time.
+   For a four-panel 3D comparison, prefer four lightweight panels or a simpler
+   TikZ schematic when the full surface mesh is not essential to the argument.
+9. If Web rendering fails, use the first TeX/WASM error in the browser console
+   as the diagnosis, remove the smallest failing layer, and resend the fence.
+   \`img-not-found.png\` is only TikZJax's final failure placeholder; it is not a
+   second image-generation step and should never be treated as the root cause.
 <!-- prompt-context:end -->
 
 ## Practical Template
@@ -823,6 +849,15 @@ itself carries reasoning.
 If the figure uses \`pgfplots\`, keep the \`axis\` environment small and label the
 domain and axes. Prefer TikZ primitives for a single curve, region, path, or
 orientation arrow; they render faster and make the geometric intent clearer.
+
+## Renderability checklist
+
+Before sending a large diagram, check balanced environments and braces, keep
+labels short, use explicit \`domain\`/\`y domain\` for parametric surfaces, and
+avoid adding several high-sample \`surf\` meshes at once. A failed Web render is
+repaired by a focused reduction or split, not by compiling a local PDF or SVG.
+When a local source file is available, the bundled static checker
+\`scripts/check_tikz_safety.py\` can flag these hazards; it never invokes TeX.
 `,
   },
 ]
