@@ -1,6 +1,6 @@
 /**
  * Hand-rolled structural and semantic validators for every durable StudyOS record.
- * Error strings reproduce the Python plugin's normalized messages because they cross the
+ * Error strings reproduce the original plugin's normalized messages because they cross the
  * model boundary inside tool envelopes; codes stay the stable identifiers.
  * @module @puji4810/dsh-study/validate
  */
@@ -149,12 +149,12 @@ function needEnum(errors: string[], value: unknown, path: string, allowed: reado
   return null
 }
 
-/** A positive (>= 1) integer, Python strict-style: booleans do not count. */
+/** A positive (>= 1) integer, strict-style: booleans do not count. */
 function isPositiveInt(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 1
 }
 
-/** A non-negative integer, Python strict-style. */
+/** A non-negative integer, strict-style. */
 function isNonNegativeInt(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0
 }

@@ -1,6 +1,6 @@
 /**
  * StudyOS vault-note parsing, resolution, and wikilink-graph projection,
- * mirroring the Python plugin's `notes.py` rule-for-rule. Pure module: files,
+ * mirroring the original notes module rule-for-rule. Pure module: files,
  * sizes, and modification times arrive through arguments.
  * @module @puji4810/dsh-study/notes
  */

@@ -241,7 +241,7 @@ function activatesOn(objective: Record<string, unknown>): string | null {
   return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : null
 }
 
-/** The project timezone, raising the Python `ValueError` when invalid. */
+/** The project timezone, raising an error when invalid. */
 function projectTimezone(project: StudyProject): string {
   const timeZone = project.timezone
   if (timeZone.trim() === '' || localDateString(new Date(0), timeZone) === null) {
@@ -286,7 +286,7 @@ function objectiveViews(
     views.push({ objective, scoped })
   }
   // An attempt is unscoped iff no declared Objective attributed it. Scoping only
-  // ever matches declared objectives, so the Python "scoped to an unknown id"
+  // ever matches declared objectives, so the original "scoped to an unknown id"
   // complement (known_ids.intersection) is provably empty and omitted.
   const unscoped = unique(
     attempts

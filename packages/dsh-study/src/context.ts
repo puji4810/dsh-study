@@ -1,6 +1,6 @@
 /**
- * Turn-local context rendering for an active learning session. Mirrors the Python
- * `context.py` `_context_payload` and `_render_context` verbatim so the injected
+ * Turn-local context rendering for an active learning session. Mirrors the original
+ * `_context_payload` and `_render_context` verbatim so the injected
  * user-message context for a bound conversation stays byte-identical.
  * @module @puji4810/dsh-study/context
  */

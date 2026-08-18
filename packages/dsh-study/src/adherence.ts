@@ -1,8 +1,8 @@
 /**
  * StudyOS plan adherence: reconcile the day StudyOS planned against the day
  * the learner had, matching applied events to evidence by
- * (objective, evidence dimension, local date). Mirrors the Python plugin's
- * `adherence.py` rule for rule.
+ * (objective, evidence dimension, local date). Mirrors the original
+ * adherence module rule for rule.
  * @module @puji4810/dsh-study/adherence
  */
 
@@ -22,8 +22,8 @@ const OCCURRED = new Set(['occurred', 'on_plan', 'under_run', 'over_run'])
 
 const TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:[+-]\d{2}:\d{2}|Z)$/
 
-/** Python `round` at a fixed decimal scale (half to even). */
-function pyRoundN(value: number, digits: number): number {
+/** Round-half-to-even at a fixed decimal scale. */
+function roundHalfEvenN(value: number, digits: number): number {
   const factor = 10 ** digits
   const scaled = value * factor
   const floor = Math.floor(scaled)
@@ -155,8 +155,8 @@ function totals(days: Array<Record<string, unknown>>): Record<string, unknown> {
     ),
   }
   if (plannedDays.length >= MIN_ADHERENCE_SAMPLE) {
-    result['completion_rate'] = pyRoundN(eventsOccurred / eventsMeasured, 3)
-    result['effort_ratio'] = minutesPlanned ? pyRoundN(minutesObserved / minutesPlanned, 3) : null
+    result['completion_rate'] = roundHalfEvenN(eventsOccurred / eventsMeasured, 3)
+    result['effort_ratio'] = minutesPlanned ? roundHalfEvenN(minutesObserved / minutesPlanned, 3) : null
     result['verdict'] = 'measured'
   } else {
     result['completion_rate'] = null

@@ -1,6 +1,6 @@
 /**
- * StudyOS pattern-proposal handler: save / list / read. Mirrors the Python `learning.py`
- * `_proposal_activity` verbatim so candidate pattern changes and their model-facing values
+ * StudyOS pattern-proposal handler: save / list / read. Mirrors the original `_proposal_activity`
+ * verbatim so candidate pattern changes and their model-facing values
  * stay identical.
  * @module @puji4810/dsh-study/handlers/pattern-proposal
  */
@@ -21,7 +21,7 @@ import {
 } from '../vault.ts'
 import { nowIso, type HandlerEnv } from './dispatch.ts'
 
-/** True for a non-null, non-array object — Python `isinstance(value, dict)`. */
+/** True for a non-null, non-array object (plain-object check). */
 function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }

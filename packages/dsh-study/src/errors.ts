@@ -5,7 +5,7 @@
  * @module @puji4810/dsh-study/errors
  */
 
-/** A stable, model-facing StudyOS failure. Codes mirror the Python plugin verbatim. */
+/** A stable, model-facing StudyOS failure. Codes mirror the original plugin verbatim. */
 export class StudyOSError extends Error {
   readonly code: string
   readonly details: Record<string, unknown> | undefined

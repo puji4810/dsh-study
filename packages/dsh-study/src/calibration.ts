@@ -1,7 +1,7 @@
 /**
  * StudyOS calibration: convert measured adherence and outcome aggregates into
- * bounded corrections for the recommender's own constants. Mirrors the Python
- * plugin's `calibration.py` rule for rule so a re-derived plan traces to the
+ * bounded corrections for the recommender's own constants. Mirrors the original
+ * calibration module rule for rule so a re-derived plan traces to the
  * observation that shaped it.
  * @module @puji4810/dsh-study/calibration
  */
@@ -31,8 +31,8 @@ const MIN_CAPACITY_FACTOR = 0.5
 /** The Schedule contract's per-event minute ceiling. */
 const MAX_DURATION_MINUTES = 720
 
-/** Python `round` (half to even) for integer results. */
-function pyRound(value: number): number {
+/** Round-half-to-even for integer results. */
+function roundHalfEven(value: number): number {
   const floor = Math.floor(value)
   const diff = value - floor
   if (diff < 0.5) return floor
@@ -40,16 +40,16 @@ function pyRound(value: number): number {
   return floor % 2 === 0 ? floor : floor + 1
 }
 
-/** Python `round` at a fixed decimal scale (half to even). */
-function pyRoundN(value: number, digits: number): number {
+/** Round-half-to-even at a fixed decimal scale. */
+function roundHalfEvenN(value: number, digits: number): number {
   const factor = 10 ** digits
-  return pyRound(value * factor) / factor
+  return roundHalfEven(value * factor) / factor
 }
 
 /** Positive whole minutes from a duration in seconds, or null. */
 function positiveMinutes(value: unknown): number | null {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return null
-  return Math.max(1, pyRound(value / 60))
+  return Math.max(1, roundHalfEven(value / 60))
 }
 
 /** The string `kind` of an outcome row, empty when absent or non-string. */
@@ -88,7 +88,7 @@ export function calibratedDuration(options: {
   }
   if (observed.length < MIN_DURATION_SAMPLE) return result
 
-  const raw = pyRound(median(observed))
+  const raw = roundHalfEven(median(observed))
   result.observed_median_minutes = raw
   const floor = Math.max(1, Math.trunc(defaultMinutes * DURATION_BAND_LOW))
   const ceiling = Math.max(floor, Math.min(MAX_DURATION_MINUTES, Math.trunc(defaultMinutes * DURATION_BAND_HIGH)))
@@ -117,8 +117,8 @@ export function capacityFactor(adherence: Record<string, unknown> | null | undef
   if (totals['verdict'] !== 'measured') return result
   const rate = totals['completion_rate']
   if (typeof rate !== 'number' || !Number.isFinite(rate)) return result
-  result.completion_rate = pyRoundN(rate, 3)
-  result.factor = pyRoundN(Math.min(1.0, Math.max(MIN_CAPACITY_FACTOR, rate)), 3)
+  result.completion_rate = roundHalfEvenN(rate, 3)
+  result.factor = roundHalfEvenN(Math.min(1.0, Math.max(MIN_CAPACITY_FACTOR, rate)), 3)
   result.source = 'observed-adherence'
   return result
 }
@@ -155,9 +155,9 @@ export function outcomeAdjustment(options: {
   if (row['verdict'] !== 'measured') return result
   const rate = row['improvement_rate']
   if (typeof rate !== 'number' || !Number.isFinite(rate)) return result
-  result.improvement_rate = pyRoundN(rate, 3)
+  result.improvement_rate = roundHalfEvenN(rate, 3)
   const scaled = (rate - NEUTRAL_IMPROVEMENT_RATE) / NEUTRAL_IMPROVEMENT_RATE
-  const delta = pyRound(MAX_OUTCOME_ADJUSTMENT * scaled)
+  const delta = roundHalfEven(MAX_OUTCOME_ADJUSTMENT * scaled)
   result.delta = Math.max(-MAX_OUTCOME_ADJUSTMENT, Math.min(MAX_OUTCOME_ADJUSTMENT, delta))
   result.source = 'measured'
   return result

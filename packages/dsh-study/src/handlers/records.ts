@@ -1,6 +1,6 @@
 /**
  * StudyOS durable record handlers: learning records, decisions, and visual lessons.
- * Mirrors the Python `tools.py` handlers `handle_study_learning_record`,
+ * Mirrors the original `handle_study_learning_record`,
  * `handle_study_decision`, and `handle_study_lesson`, including the byte-exact
  * Markdown serialization of each record type.
  * @module @puji4810/dsh-study/handlers/records

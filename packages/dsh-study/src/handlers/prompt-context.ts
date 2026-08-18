@@ -1,6 +1,6 @@
 /**
- * StudyOS prompt-context handler: `load`. Mirrors the Python `tools.py`
- * `handle_study_prompt_context` and its fragment/budget ladder verbatim (lines 2408-2584)
+ * StudyOS prompt-context handler: `load`. Mirrors the original `handle_study_prompt_context`
+ * and its fragment/budget ladder verbatim
  * so the injected prompt fragments, drop reasons, and budget block stay identical.
  * @module @puji4810/dsh-study/handlers/prompt-context
  */
@@ -66,7 +66,7 @@ function promptFragment(kind: string, source: string, content: string): PromptCa
  * Extract one skill's marked prompt fragment, or null when the skill is missing or empty.
  * @param kind - the fragment kind.
  * @param skillName - the skill name.
- * @returns `{ fragment, warnings }` the Python `_read_prompt_fragment` way.
+ * @returns `{ fragment, warnings }` the original `_read_prompt_fragment` way.
  */
 function readPromptFragment(kind: string, skillName: string): { fragment: PromptCandidate | null; warnings: string[] } {
   const label = `skills/${skillName}/SKILL.md`
@@ -89,7 +89,7 @@ function dropReason(kind: string, budget: number, reserve: number, unit: string)
 }
 
 /**
- * Read exactly as much of a summary file as the pool can ever fund, the Python
+ * Read exactly as much of a summary file as the pool can ever fund, the original
  * `_read_summary_text` way.
  * @param path - the summary file path.
  * @param poolTokens - the token pool.

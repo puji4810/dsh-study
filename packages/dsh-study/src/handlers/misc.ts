@@ -1,7 +1,7 @@
 /**
  * StudyOS misc resource handlers: error logging, session logging, and memory sync.
- * Each mirrors a legacy `tools.py` handler rule-for-rule so vaults and model-facing
- * values stay identical to the Python plugin.
+ * Each mirrors a legacy handler rule-for-rule so vaults and model-facing
+ * values stay identical to the original plugin.
  * @module @puji4810/dsh-study/handlers/misc
  */
 
@@ -15,7 +15,7 @@ import { stripWikilink } from '../util.ts'
 import { appendText, listMarkdownNotes, resolveVaultPath, studyDir, writeText } from '../vault.ts'
 import type { HandlerEnv } from './dispatch.ts'
 
-/** The UTC date of the injected clock, matching the Python `date.today()` intent. */
+/** The UTC date of the injected clock. */
 function todayIso(env: HandlerEnv): string {
   return env.now().toISOString().slice(0, 10)
 }

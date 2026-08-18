@@ -41,7 +41,7 @@ export function slugify(value: unknown, fallback: string): string {
 
 /**
  * SHA-256 hex digest of a value serialized with sorted keys — the same canonical
- * digest the Python orchestrator uses for intervention and proposal fingerprints.
+ * digest the original orchestrator uses for intervention and proposal fingerprints.
  * @param value - any JSON-serializable value.
  * @returns 64-character lowercase hex digest.
  */
@@ -63,7 +63,7 @@ function sortKeys(value: unknown): unknown {
 }
 
 /**
- * Clamp an integer into an inclusive range the way the Python `_limit_from` bounds
+ * Clamp an integer into an inclusive range the way the original `_limit_from` bounds
  * list sizes.
  * @param value - the raw value.
  * @param fallback - used when the value is not a finite number.

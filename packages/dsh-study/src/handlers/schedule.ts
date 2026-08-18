@@ -1,6 +1,6 @@
 /**
- * StudyOS schedule handler: template / validate / save / list / read. Mirrors the Python
- * `tools.py` `handle_study_schedule` verbatim plus `_schedule_template` and the relationship
+ * StudyOS schedule handler: template / validate / save / list / read. Mirrors the original
+ * `handle_study_schedule` verbatim plus `_schedule_template` and the relationship
  * validation, so registered schedules and model-facing values stay identical.
  * @module @puji4810/dsh-study/handlers/schedule
  */
@@ -20,7 +20,7 @@ import {
 } from '../vault.ts'
 import type { HandlerEnv } from './dispatch.ts'
 
-/** True for a non-null, non-array object — Python `isinstance(value, dict)`. */
+/** True for a non-null, non-array object (plain-object check). */
 function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
@@ -38,7 +38,7 @@ function messageOf(error: unknown): string {
   return String(error instanceof Error ? error.message : error)
 }
 
-/** The Python `_schedule_template`: a project's pack-owned starter template. */
+/** The original `_schedule_template`: a project's pack-owned starter template. */
 function scheduleTemplate(project: StudyProject): Record<string, unknown> {
   return domainPackFor(project).scheduleTemplate(project)
 }

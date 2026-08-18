@@ -455,7 +455,7 @@ WikiLink misses. Audit with \`note.graph\`.
 
 Start a focused Session once with the complete minimal contract:
 
-\`\`\`python
+\`\`\`text
 study_coach(action="start", data={"session_id": "learn-topic-001", "contract":
   {"mode": "learn", "objective": "observable capability",
    "time_budget_minutes": 30, "assistance_level": "guided",
@@ -468,7 +468,7 @@ Advance only after the learner responds, and reuse that \`session_id\` for
 \`snapshot\` and \`finish\` — both rules are already carried by the \`study_coach\`
 \`action\` and \`observation\` schema descriptions:
 
-\`\`\`python
+\`\`\`text
 study_coach(action="advance", data={"session_id": "learn-topic-001",
   "observation": {"response": "observed response", "result": "partial",
    "evaluator": {"kind": "agent"}, "diagnoses": []}})

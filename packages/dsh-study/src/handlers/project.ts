@@ -1,6 +1,6 @@
 /**
  * StudyOS project handler: init / select / status / update_prompt_summary. Mirrors the
- * Python `tools.py` `handle_study_project` plus `_default_project_manifest` and
+ * original `handle_study_project` plus `_default_project_manifest` and
  * `_summary_reach_warnings` verbatim so manifests and model-facing values stay identical.
  * @module @puji4810/dsh-study/handlers/project
  */
@@ -32,7 +32,7 @@ function deepCopy<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T
 }
 
-/** True for a non-null, non-array object — Python `isinstance(value, dict)`. */
+/** True for a non-null, non-array object (plain-object check). */
 function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
@@ -70,7 +70,7 @@ function activeIsProject(vault: string, projectId: string): boolean {
 }
 
 /**
- * Build a project manifest from pack defaults and explicit overrides, the Python
+ * Build a project manifest from pack defaults and explicit overrides, the original
  * `_default_project_manifest` way.
  * @param args - the init arguments.
  * @param timestamp - the current ISO timestamp.
@@ -116,7 +116,7 @@ export function defaultProjectManifest(args: StudyData, timestamp: string): Stud
 }
 
 /**
- * Report the part of a stored summary the prompt reader cannot reach, the Python
+ * Report the part of a stored summary the prompt reader cannot reach, the original
  * `_summary_reach_warnings` way.
  * @param summary - the stored summary text.
  * @param policy - the merged prompt policy.

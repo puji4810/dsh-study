@@ -1,7 +1,7 @@
 /**
  * StudyOS note resource handlers: list, read, extract, audit, graph, validate, save.
- * Mirrors the Python `tools.py` list/read/extract handlers and the `learning.py`
- * `_note_activity` save/validate/audit/graph flow, including the exact
+ * Mirrors the original list/read/extract handlers and the `_note_activity`
+ * save/validate/audit/graph flow, including the exact
  * BROKEN_WIKILINKS and NOTE_EXISTS error text.
  * @module @puji4810/dsh-study/handlers/note
  */
@@ -277,7 +277,7 @@ function validateOrSave(args: StudyData, env: HandlerEnv, action: string): Study
   } catch (error) {
     return err('VALIDATION_FAILED', errorMessage(error))
   }
-  // Re-check existence against the live filesystem to reproduce the Python
+  // Re-check existence against the live filesystem to reproduce the original
   // overwrite guard before any write happens.
   if (!overwrite) {
     for (const draft of drafts) {

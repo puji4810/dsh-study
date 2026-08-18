@@ -51,7 +51,7 @@ function messageOf(error: unknown): string {
   return String(error instanceof Error ? error.message : error)
 }
 
-/** True for a non-null, non-array object — Python `isinstance(value, dict)`. */
+/** True for a non-null, non-array object (plain-object check). */
 function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
@@ -72,7 +72,7 @@ function sortedJsonNames(root: string): string[] {
 
 /**
  * The project's own clock zone: its declared IANA name, validated, with a UTC fallback when
- * undeclared (mirrors the Python `ZoneInfo`/`fallback.tzinfo` seam).
+ * undeclared (mirrors the original timezone-resolution seam).
  * @param project - the project manifest.
  * @returns the timezone name.
  */
@@ -107,7 +107,7 @@ export function projectSchedules(vault: string, projectId: string): StudyData[] 
 }
 
 /**
- * Filter attempts by the Python `_filtered_attempts` rules.
+ * Filter attempts by the original `_filtered_attempts` rules.
  * @param vault - the resolved vault path.
  * @param projectId - the project id.
  * @param filters - the filter record.
@@ -372,7 +372,7 @@ function learningRuntime(vault: string, project: StudyProject, env: HandlerEnv):
   })
 }
 
-/** Merge the coach payload the Python `_payload` way. */
+/** Merge the coach payload the original `_payload` way. */
 function mergeCoachPayload(args: StudyData): StudyData {
   const data = args['data']
   const result: StudyData = isObject(data) ? { ...data } : {}

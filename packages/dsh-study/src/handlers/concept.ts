@@ -1,6 +1,6 @@
 /**
  * StudyOS concept resource handlers: graph, queue, and learning-state update.
- * Mirrors the Python `tools.py` handlers `handle_study_concept_graph`,
+ * Mirrors the original `handle_study_concept_graph`,
  * `handle_study_learning_queue`, and `handle_study_update_concept_state`.
  * @module @puji4810/dsh-study/handlers/concept
  */

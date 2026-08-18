@@ -26,7 +26,7 @@ import {
 } from '../vault.ts'
 import { nowIso, type HandlerEnv } from './dispatch.ts'
 
-/** True for a non-null, non-array object — Python `isinstance(value, dict)`. */
+/** True for a non-null, non-array object (plain-object check). */
 function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
@@ -47,7 +47,7 @@ function messageOf(error: unknown): string {
 
 /**
  * Normalize a derived proposal's timestamp strings to seconds precision, compensating for the
- * shared clock's millisecond rendering so validation matches the Python `timespec="seconds"`.
+ * shared clock's millisecond rendering so validation matches second-precision timestamps.
  * @param proposal - the proposal record, mutated in place.
  */
 function normalizeProposalTimestamps(proposal: StudyData): void {
@@ -121,7 +121,7 @@ function scheduleEventsOverlap(a: Record<string, unknown>, b: Record<string, unk
   return aStart < bEnd && aEnd > bStart
 }
 
-/** Save a candidate proposal the Python `_plan_proposal_activity` `save` way. */
+/** Save a candidate proposal the original `_plan_proposal_activity` `save` way. */
 function saveProposal(
   vault: string,
   project: StudyProject,
@@ -284,7 +284,7 @@ export function handlePlanProposalActivity(action: string, args: StudyData, env:
 }
 
 /**
- * Derive and persist today's proposal exactly once, the Python `_ensure_today_proposal` way.
+ * Derive and persist today's proposal exactly once, the original `_ensure_today_proposal` way.
  * @param vault - the resolved vault path.
  * @param project - the project manifest.
  * @param args - the payload (`as_of`).
@@ -358,7 +358,7 @@ function ensureTodayProposal(
 }
 
 /**
- * Write an accepted proposal's day-plan events into its Schedules, the Python
+ * Write an accepted proposal's day-plan events into its Schedules, the original
  * `_apply_plan_proposal` way.
  * @param vault - the resolved vault path.
  * @param project - the project manifest.

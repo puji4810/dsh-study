@@ -1,7 +1,7 @@
 /**
  * StudyOS curriculum resource handlers: create, list, import a problem checklist
- * (题单), and track plan progress. Mirrors the Python `tools.py` handlers
- * `handle_study_create_curriculum`, `handle_study_list_curricula`,
+ * (题单), and track plan progress. Mirrors the original `handle_study_create_curriculum`,
+ * `handle_study_list_curricula`,
  * `handle_study_import_plan`, and `handle_study_plan_progress`.
  * @module @puji4810/dsh-study/handlers/curriculum
  */
@@ -13,7 +13,7 @@ import type { StudyData } from '../types.ts'
 import { resolveVaultPath, studyDir } from '../vault.ts'
 import type { HandlerEnv } from './dispatch.ts'
 
-/** The curriculum schema version the Python plugin stamps. */
+/** The curriculum schema version the original plugin stamps. */
 const CURRICULUM_VERSION = '1'
 
 /** The empty curriculum template returned when no data is supplied. */
@@ -154,7 +154,7 @@ function listCurricula(args: StudyData, env: HandlerEnv): StudyEnvelope {
           file: relativeToVault(vault, path),
         })
       } catch {
-        // Malformed curricula are skipped, matching the Python list behavior.
+        // Malformed curricula are skipped, matching the original list behavior.
       }
     }
     return ok({ curricula })

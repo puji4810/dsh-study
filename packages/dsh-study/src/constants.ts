@@ -1,6 +1,6 @@
 /**
  * Shared StudyOS constants: schema versions, stable enums, and the default prompt policy.
- * Every value mirrors the Python StudyOS plugin so vaults and model-facing values stay compatible.
+ * Every value mirrors the original StudyOS plugin so vaults and model-facing values stay compatible.
  * @module @puji4810/dsh-study/constants
  */
 
@@ -32,7 +32,7 @@ export const DOMAIN_PACK_ID_PATTERN = '^[a-z][a-z0-9_-]*\\.v[1-9][0-9]*$'
 export const ATTEMPT_RESULTS = ['correct', 'partial', 'incorrect', 'abandoned'] as const
 export type AttemptResult = (typeof ATTEMPT_RESULTS)[number]
 
-/** The six evidence dimensions, weakest to strongest by the Python tuple order. */
+/** The six evidence dimensions, weakest to strongest in canonical order. */
 export const EVIDENCE_DIMENSIONS = [
   'recall',
   'recognition',

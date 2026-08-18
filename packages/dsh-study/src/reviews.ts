@@ -1,6 +1,6 @@
 /**
- * StudyOS spaced-repetition and concept-graph projections, mirroring the Python
- * plugin's `reviews.py` rule-for-rule so vaults and model-facing values stay
+ * StudyOS spaced-repetition and concept-graph projections, mirroring the original
+ * reviews module rule-for-rule so vaults and model-facing values stay
  * identical. Pure module: time injection arrives through parameters.
  * @module @puji4810/dsh-study/reviews
  */

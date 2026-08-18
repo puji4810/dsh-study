@@ -25,13 +25,13 @@ dsh 的依赖按 profile 隔离，因此只需安装到实际使用的 profile�
 - `study_activity(resource, action, data?, vault_path?, project_id?)` — 状态接口：项目、日程、笔记、复习、尝试与计划提案。规范保存动作写入前先校验；`review.submit` 同时负责证据记录与复习间隔推进。
 - `study_coach(action, scope?, data?, vault_path?, project_id?)` — 证据投影与会话运行时：`start`/`start_intervention`/`advance`/`snapshot`/`finish` 驱动一份学习契约；`diagnose`、`summarize`、`recommend`、`prioritize`、`propose_plan`、`evaluate_interventions`、`evaluate_adherence`、`generate_probe`、`propose_pattern` 从不可变尝试记录推导判断。
 
-两个工具都以 StudyOS 信封 — `{ ok, data?, error?: { code, message, details? }, warnings }` — 作为规范返回值。领域失败是 `ok: false` 值而非抛出的异常；稳定错误码与 Python 插件一致（`SESSION_NOT_FOUND`、`PROPOSAL_FINGERPRINT_MISMATCH`、`BROKEN_WIKILINKS`、…）。各工作流的操作形态由 `prompt_context.load` 返回的操作指南承载，因此两个工具 schema 保持窄小。
+两个工具都以 StudyOS 信封 — `{ ok, data?, error?: { code, message, details? }, warnings }` — 作为规范返回值。领域失败是 `ok: false` 值而非抛出的异常；稳定错误码与原实现一致（`SESSION_NOT_FOUND`、`PROPOSAL_FINGERPRINT_MISMATCH`、`BROKEN_WIKILINKS`、…）。各工作流的操作形态由 `prompt_context.load` 返回的操作指南承载，因此两个工具 schema 保持窄小。
 
 当 `skills` 服务被组合时，插件还注册九个路由技能（`study-os`、`study-plan`、`study-organize`、`study-review`、`study-teach`、`study-lesson`、`study-tikz`、`study-assessment`、`study-grill`）与三个域包技能（`study-engineering`、`study-kaoyan`、`study-research`）。安装 `@puji4810/dsh-study` 时也会自动安装其 `@puji4810/dsh-tikz` 与 `@puji4810/dsh-mermaid` 依赖，从而在 Web 客户端启用 TikZ 与 Mermaid 图形。
 
 ## Vault
 
-StudyOS 状态存放在学习者自有的 Vault 目录中 — 与 Python 插件完全相同的磁盘布局，现有 Vault 无需迁移即可打开：
+StudyOS 状态存放在学习者自有的 Vault 目录中 — 与原实现完全相同的磁盘布局，现有 Vault 无需迁移即可打开：
 
 ```
 <vault>/.StudyOS/
@@ -81,7 +81,7 @@ Markdown 笔记（概念、模式、带复习 frontmatter 的例题）与 `.Stud
 
 #### What the model sees
 
-两个工具 schema 及其 Python 插件描述，通过 `defineTool` 注册。当 skills 服务被组合时，十二个 StudyOS 技能也会出现在技能目录中。`study_coach.start` 或 `advance` 之后，插件通过 `agent.inject` 为下一次请求注入活跃会话上下文（`[StudyOS active learning session — turn-local context]` 加有界的会话载荷）。
+两个工具 schema 及其插件描述，通过 `defineTool` 注册。当 skills 服务被组合时，十二个 StudyOS 技能也会出现在技能目录中。`study_coach.start` 或 `advance` 之后，插件通过 `agent.inject` 为下一次请求注入活跃会话上下文（`[StudyOS active learning session — turn-local context]` 加有界的会话载荷）。
 
 ##### `study_activity` description
 
@@ -106,5 +106,5 @@ StudyOS evidence projection and Session runtime. Load the workflow guide before 
 ## Known Limitations and Deferred Work
 
 - **没有 cron 运行限制** — `CRON_PROPOSAL_ONLY` 守护的是 dsh 中不存在的 Hermes `cron_` 会话 id；dsh 的定时运行通过与交互运行相同的显式工具调用决策提案。
-- **概念图与复习统计缓存按调用重建** — Python 插件以一小时 TTL 在磁盘缓存投影；此处 handlers 每次调用重建（笔记规模小），且笔记变化时磁盘缓存文件仍会被失效。
+- **概念图与复习统计缓存按调用重建** — 原实现以一小时 TTL 在磁盘缓存投影；此处 handlers 每次调用重建（笔记规模小），且笔记变化时磁盘缓存文件仍会被失效。
 - **`prompt_context` 片段随包内置** — 路由片段来自插件内联的技能正文而非磁盘 SKILL.md 文件，因此修改片段意味着修改包，而不是修改 Vault 文件。

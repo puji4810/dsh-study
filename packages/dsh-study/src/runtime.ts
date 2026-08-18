@@ -2,7 +2,7 @@
  * Evidence-backed learning-session orchestration for StudyOS. `LearningRuntime` is the
  * narrow lifecycle interface between a conversation and StudyOS' durable evidence model.
  * It owns session state and activity selection; attempt persistence and competency
- * diagnosis stay injected. Every code, message, and field mirrors Python `runtime.py`.
+ * diagnosis stay injected. Every code, message, and field mirrors the original runtime module.
  * @module @puji4810/dsh-study/runtime
  */
 
@@ -627,7 +627,7 @@ export class LearningRuntime {
   }
 }
 
-/** True for a non-null, non-array object — Python `isinstance(value, dict)` semantics. */
+/** True for a non-null, non-array object (plain-object semantics). */
 function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }

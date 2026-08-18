@@ -1,6 +1,6 @@
 /**
  * Discoverable domain policy for StudyOS: the four built-in Domain Packs and their
- * resolution registry. Text and defaults mirror the Python `domain_packs` package
+ * resolution registry. Text and defaults mirror the original domain-packs package
  * verbatim; resolution follows the same `domain_pack`-over-`domain` precedence.
  * @module @puji4810/dsh-study/domain-packs
  */

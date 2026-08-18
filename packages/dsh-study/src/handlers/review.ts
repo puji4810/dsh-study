@@ -1,7 +1,7 @@
 /**
  * StudyOS review resource handlers: due, record, submit, create_task, stats,
  * weekly_report, export_anki, plus the review-detail projector.
- * Mirrors the Python `tools.py` review handlers and `learning.py`
+ * Mirrors the original review handlers and
  * `handle_study_review_submission`/`handle_study_review_detail`.
  * @module @puji4810/dsh-study/handlers/review
  */
@@ -203,7 +203,7 @@ export function handleStudyReviewDetail(args: StudyData, env: HandlerEnv): Study
   }
 }
 
-/** The `due` action, with every Python filter and sort option. */
+/** The `due` action, with every original filter and sort option. */
 function dueReviews(args: StudyData, env: HandlerEnv): StudyEnvelope {
   try {
     const vault = resolveVaultPath(args.vault_path, env.vaultPath)

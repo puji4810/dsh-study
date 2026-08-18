@@ -1,7 +1,7 @@
 /**
  * Domain adapters that turn a learning objective into grounded activities, and judge
  * whether an observation carries the grounding evidence each domain demands. Every
- * field and message mirrors the Python `activities.py` module verbatim.
+ * field and message mirror the original activities module verbatim.
  * @module @puji4810/dsh-study/activities
  */
 

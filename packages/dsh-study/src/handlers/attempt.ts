@@ -1,6 +1,6 @@
 /**
- * StudyOS attempt handler: record / list / read. Mirrors the Python `learning.py`
- * `_record_attempt`, `_filtered_attempts`, and `_attempt_activity` verbatim so attempts and
+ * StudyOS attempt handler: record / list / read. Mirrors the original `_record_attempt`,
+ * `_filtered_attempts`, and `_attempt_activity` handlers verbatim so attempts and
  * model-facing values stay identical.
  * @module @puji4810/dsh-study/handlers/attempt
  */
@@ -38,7 +38,7 @@ function messageOf(error: unknown): string {
 }
 
 /**
- * Filter attempts the Python `_filtered_attempts` way by concept, pattern, result, item,
+ * Filter attempts the original `_filtered_attempts` way by concept, pattern, result, item,
  * session, attempt ids, and an inclusive date range.
  * @param vault - the resolved vault path.
  * @param projectId - the project id.

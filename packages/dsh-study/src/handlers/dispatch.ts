@@ -1,6 +1,6 @@
 /**
  * StudyOS activity dispatch: resolve a `resource.action` pair from one merged payload and
- * route it to the owning handler. Mirrors the Python `learning.py` `handle_study_activity` /
+ * route it to the owning handler. Mirrors the original `handle_study_activity` /
  * `_dispatch_resource` / `_payload` / `_schedule_request` verbatim so vaults and model-facing
  * envelopes stay identical.
  * @module @puji4810/dsh-study/handlers/dispatch
@@ -45,7 +45,7 @@ export function nowIso(env: HandlerEnv): string {
 }
 
 /**
- * Merge an activity payload the Python `_payload` way: spread the `data` object, then lift
+ * Merge an activity payload the original `_payload` way: spread the `data` object, then lift
  * `vault_path` and `project_id` from the top-level args when present.
  * @param args - the raw activity arguments.
  * @returns the merged payload.
@@ -62,7 +62,7 @@ export function mergePayload(args: StudyData): StudyData {
 }
 
 /**
- * Adapt the public single-data envelope to the legacy schedule handler the Python
+ * Adapt the public single-data envelope to the legacy schedule handler the original
  * `_schedule_request` way.
  * @param action - the schedule action.
  * @param payload - the merged payload.

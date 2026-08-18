@@ -1,7 +1,7 @@
 /**
  * Evidence diagnosis: turn a set of immutable attempts into a revisable competency
  * projection, then derive recommendations, pattern proposals, and a probe blueprint.
- * Every computation mirrors the Python `learning.py` functions verbatim so vaults
+ * Every computation mirrors the original learning functions verbatim so vaults
  * and model-facing values stay compatible.
  * @module @puji4810/dsh-study/diagnosis
  */
@@ -79,7 +79,7 @@ function sortByTime(items: StudyAttempt[]): StudyAttempt[] {
   })
 }
 
-/** Round to three decimal places the way Python's `round(value, 3)` behaves. */
+/** Round to three decimal places, half-to-even. */
 function round3(value: number): number {
   return Number(value.toFixed(3))
 }
@@ -274,7 +274,7 @@ export function recommendations(diagnosis: Diagnosis): Recommendation[] {
  * Derive pattern-proposal candidates from a diagnosis.
  * @param projectId - the owning project id.
  * @param diagnosis - the competency diagnosis.
- * @param createdAtIso - the creation timestamp, replacing Python's `datetime.now()`.
+ * @param createdAtIso - the creation timestamp from the injected clock.
  * @returns the proposals for repeated diagnosis clusters.
  */
 export function patternProposals(
@@ -319,7 +319,7 @@ export function probeBlueprint(diagnosis: Diagnosis): Record<string, unknown> | 
   if (diagnosis.attempt_count === 0) return null
   const recs = recommendations(diagnosis)
   /* v8 ignore next -- recommendations is never empty when attempt_count > 0 (see _recommendations);
-   * this default mirrors Python's defensive `else` */
+   * this default mirrors the original's defensive `else` */
   const selected: Recommendation = recs[0] ?? {
     priority: 'medium',
     intervention: 'retention_probe',
@@ -335,7 +335,7 @@ export function probeBlueprint(diagnosis: Diagnosis): Record<string, unknown> | 
     independence_probe: 'repeat the demonstrated capability without hints or guided steps',
     retention_probe: 'use delayed free retrieval without cues',
   }
-  /* v8 ignore next -- every recommendation intervention maps to a known variation, so the default is Python's defensive fallback */
+  /* v8 ignore next -- every recommendation intervention maps to a known variation, so the default is the original's defensive fallback */
   const variation = variationFor[purpose] ?? 'test the targeted gap with one controlled variation'
   const evidenceIds = [...new Set([
     ...selected.evidence_attempt_ids,

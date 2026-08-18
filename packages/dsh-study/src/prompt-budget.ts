@@ -1,8 +1,8 @@
 /**
  * Pure prompt-budget arithmetic for StudyOS fragments: CJK-aware token
  * estimation, boundary-preferring truncation, and the priority degrade ladder.
- * No I/O, no state, no dependencies. Mirrors the Python plugin's
- * `prompt_budget.py` bit-for-bit.
+ * No I/O, no state, no dependencies. Mirrors the original
+ * prompt-budget module bit-for-bit.
  * @module @puji4810/dsh-study/prompt-budget
  */
 

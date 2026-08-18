@@ -1,7 +1,7 @@
 /**
  * StudyOS intervention outcomes: compare each accepted Intervention's baseline
  * verification status against the evidence that arrived after its decision.
- * Mirrors the Python plugin's `outcomes.py` rule for rule.
+ * Mirrors the original outcomes module rule for rule.
  * @module @puji4810/dsh-study/outcomes
  */
 
@@ -22,16 +22,16 @@ function fieldString(value: unknown): string {
   return typeof value === 'string' ? value : ''
 }
 
-/** Python `round` at a fixed decimal scale (half to even). */
-function pyRoundN(value: number, digits: number): number {
+/** Round-half-to-even at a fixed decimal scale. */
+function roundHalfEvenN(value: number, digits: number): number {
   const factor = 10 ** digits
   const scaled = value * factor
   const floor = Math.floor(scaled)
   const diff = scaled - floor
   if (diff < 0.5) return floor / factor
   if (diff > 0.5) return (floor + 1) / factor
-  // Half-to-even for an exact .5 (Python `round`). An integer-ratio rate only
-  // lands here at a >= 2000-denominator sample, so the branch mirrors Python's
+  // Half-to-even for an exact .5. An integer-ratio rate only
+  // lands here at a >= 2000-denominator sample, so the branch mirrors
   // banker's rounding without being reachable from ordinary decision counts.
   /* v8 ignore next */
   return (floor % 2 === 0 ? floor : floor + 1) / factor
@@ -109,10 +109,10 @@ function aggregate(outcomes: Array<Record<string, unknown>>): Array<Record<strin
       unchanged,
       regressed,
       not_attempted: notAttempted,
-      adherence_rate: pyRoundN(acted / items.length, 3),
+      adherence_rate: roundHalfEvenN(acted / items.length, 3),
     }
     if (acted >= MIN_OUTCOME_SAMPLE) {
-      row['improvement_rate'] = pyRoundN(improved / acted, 3)
+      row['improvement_rate'] = roundHalfEvenN(improved / acted, 3)
       row['verdict'] = 'measured'
     } else {
       row['improvement_rate'] = null

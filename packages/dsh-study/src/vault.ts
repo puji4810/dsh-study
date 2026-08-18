@@ -30,7 +30,7 @@ const SCHEDULE_ID_RE = new RegExp(SCHEDULE_ID_PATTERN)
 /** The StudyOS state directory name inside a vault. */
 const STUDY_DIR_NAME = '.StudyOS'
 
-/** True for a non-null, non-array object — Python `isinstance(value, dict)`. */
+/** True for a non-null, non-array object (plain-object check). */
 function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
@@ -747,14 +747,14 @@ export function upsertFrontmatterField(path: string, field: string, value: unkno
   writeFileSync(path, `${lines.join('\n')}\n`, 'utf8')
 }
 
-/** Split text into lines without a trailing empty element, like Python `str.splitlines()`. */
+/** Split text into lines without a trailing empty element. */
 function splitLines(text: string): string[] {
   const parts = text.split(/\r\n|\r|\n/)
   if (parts.length > 0 && parts[parts.length - 1] === '') parts.pop()
   return parts
 }
 
-/** Serialize one frontmatter value the way the Python upsert does. */
+/** Serialize one frontmatter value the way the original upsert does. */
 function serializeFrontmatterValue(value: unknown): string {
   if (typeof value === 'boolean') return value ? 'true' : 'false'
   if (value instanceof Date) {

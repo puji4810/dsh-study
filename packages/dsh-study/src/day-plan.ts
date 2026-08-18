@@ -193,15 +193,15 @@ function requireZoneParts(date: Date, timeZone: string): ZoneParts {
   return parts
 }
 
-/** Python `round` at a fixed decimal scale (half to even). */
-function pyRoundN(value: number, digits: number): number {
+/** Round-half-to-even at a fixed decimal scale. */
+function roundHalfEvenN(value: number, digits: number): number {
   const factor = 10 ** digits
   const scaled = value * factor
   const floor = Math.floor(scaled)
   const diff = scaled - floor
   if (diff < 0.5) return floor / factor
   /* v8 ignore start -- a study-window coverage is always >= 0.7, so the
-     fractional part never lands exactly on .5; Python's half-even form is
+     fractional part never lands exactly on .5; the half-even form is
      kept for fidelity but the branch cannot arise from reachable coverage. */
   if (diff > 0.5) return (floor + 1) / factor
   return (floor % 2 === 0 ? floor : floor + 1) / factor
@@ -260,7 +260,7 @@ export function studyWindow(
       covered += hours[end] ?? 0
       if (covered >= needed) {
         const span = end - start + 1
-        // The (span, start) tuple tiebreak in the Python source degenerates to
+        // The (span, start) tuple tiebreak in the original source degenerates to
         // "shorter span wins": start always reaches the bar (the full histogram
         // coverage >= needed), so best.start stays 0 and start never beats it.
         if (best === null || span < best.span) {
@@ -274,7 +274,7 @@ export function studyWindow(
   // The modal-hour fallback is unreachable: a start of 0 always accumulates the
   // whole histogram, and `needed = total * WINDOW_COVERAGE` is always <= total,
   // so some contiguous span always reaches the coverage bar. Kept to mirror the
-  // Python plugin's defensive branch for scattered-across-midnight activity.
+  // original plugin's defensive branch for scattered-across-midnight activity.
   /* v8 ignore next */
   if (best === null) {
     let busiest = 0
@@ -288,7 +288,7 @@ export function studyWindow(
       end_hour: Math.min(23, busiest + 3),
       source: 'modal-hour',
       sample_size: total,
-      coverage: pyRoundN((hours[busiest] ?? 0) / total, 3),
+      coverage: roundHalfEvenN((hours[busiest] ?? 0) / total, 3),
     }
   }
 
@@ -299,7 +299,7 @@ export function studyWindow(
     end_hour: end,
     source: 'evidence',
     sample_size: total,
-    coverage: pyRoundN(covered / total, 3),
+    coverage: roundHalfEvenN(covered / total, 3),
   }
 }
 

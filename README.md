@@ -27,13 +27,13 @@ The plugin registers two tools on `ctx.tools`:
 - `study_activity(resource, action, data?, vault_path?, project_id?)` — the state interface: projects, schedules, notes, reviews, attempts, and plan proposals. Canonical save actions validate before writing; `review.submit` owns both evidence recording and review spacing.
 - `study_coach(action, scope?, data?, vault_path?, project_id?)` — the evidence projection and session runtime: `start`/`start_intervention`/`advance`/`snapshot`/`finish` drive one learning contract, while `diagnose`, `summarize`, `recommend`, `prioritize`, `propose_plan`, `evaluate_interventions`, `evaluate_adherence`, `generate_probe`, and `propose_pattern` derive judgments from immutable attempts.
 
-Both tools return the StudyOS envelope — `{ ok, data?, error?: { code, message, details? }, warnings }` — as their canonical value. Domain failures are `ok: false` values, never thrown exceptions; the stable error codes mirror the Python plugin (`SESSION_NOT_FOUND`, `PROPOSAL_FINGERPRINT_MISMATCH`, `BROKEN_WIKILINKS`, …). The operation shapes for each workflow live in the operation guides returned by `prompt_context.load`, so the two tool schemas stay narrow.
+Both tools return the StudyOS envelope — `{ ok, data?, error?: { code, message, details? }, warnings }` — as their canonical value. Domain failures are `ok: false` values, never thrown exceptions; the stable error codes mirror the original StudyOS plugin (`SESSION_NOT_FOUND`, `PROPOSAL_FINGERPRINT_MISMATCH`, `BROKEN_WIKILINKS`, …). The operation shapes for each workflow live in the operation guides returned by `prompt_context.load`, so the two tool schemas stay narrow.
 
 When the `skills` service is composed, the plugin also registers the nine routed StudyOS skills (`study-os`, `study-plan`, `study-organize`, `study-review`, `study-teach`, `study-lesson`, `study-tikz`, `study-assessment`, `study-grill`) plus the three domain-pack skills (`study-engineering`, `study-kaoyan`, `study-research`). Installing `@puji4810/dsh-study` also installs its `@puji4810/dsh-tikz` dependency, which enables TikZ diagrams in the Web client.
 
 ## The Vault
 
-StudyOS state lives in a learner-owned Vault directory — the same on-disk layout as the Python plugin, so an existing Vault opens unchanged:
+StudyOS state lives in a learner-owned Vault directory — the same on-disk layout as the original StudyOS plugin, so an existing Vault opens unchanged:
 
 ```
 <vault>/.StudyOS/
@@ -83,7 +83,7 @@ Review spacing is Ebbinghaus-based, not FSRS or SM-2: the interval table `[1, 2,
 
 #### What the model sees
 
-The two tool schemas with their Python-plugin descriptions, registered through `defineTool`. When the skills service is composed, the twelve StudyOS skills also appear in the skill catalog. After `study_coach.start` or `advance`, the plugin injects the active-session context (`[StudyOS active learning session — turn-local context]` plus the bounded session payload) for the next request through `agent.inject`.
+The two tool schemas with their plugin descriptions, registered through `defineTool`. When the skills service is composed, the twelve StudyOS skills also appear in the skill catalog. After `study_coach.start` or `advance`, the plugin injects the active-session context (`[StudyOS active learning session — turn-local context]` plus the bounded session payload) for the next request through `agent.inject`.
 
 ##### `study_activity` description
 
@@ -108,5 +108,5 @@ Independent: this package contributes no system-prompt section, so its presence 
 ## Known Limitations and Deferred Work
 
 - **No cron-run restriction** — `CRON_PROPOSAL_ONLY` guarded Hermes' `cron_` session ids, which do not exist in dsh; scheduled dsh runs decide proposals through the same explicit tool calls as interactive ones.
-- **Concept-graph and review-stats caches are per-call** — the Python plugin cached projections on disk with a one-hour TTL; here handlers rebuild them per call (notes scale is small) and the on-disk cache files are still invalidated when notes change.
+- **Concept-graph and review-stats caches are per-call** — the original plugin cached projections on disk with a one-hour TTL; here handlers rebuild them per call (notes scale is small) and the on-disk cache files are still invalidated when notes change.
 - **`prompt_context` fragments are bundled** — the routing fragments come from the plugin's inlined skill bodies rather than SKILL.md files on disk, so editing a fragment means editing the package, not a Vault file.
