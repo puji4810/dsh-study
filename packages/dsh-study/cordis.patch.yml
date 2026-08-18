@@ -1,11 +1,14 @@
-# StudyOS bundles its TikZ renderer as a second row, so a single
-# `dsh plugin --profile web add @puji4810/dsh-study` activates both the
-# StudyOS panel and TikZ fence rendering. `@puji4810/dsh-tikz` stays a
-# regular dependency of this package; the profile's hoisted node_modules
-# makes it resolvable from this row's `name` without a separate layer.
+# StudyOS bundles its diagram renderers as extra rows, so a single
+# `dsh plugin --profile web add @puji4810/dsh-study` activates the StudyOS
+# panel plus both TikZ and Mermaid fence rendering. Both packages stay
+# regular dependencies of this package; the profile's hoisted node_modules
+# makes them resolvable from these rows' `name` without a separate layer.
 - insert:
     - id: studyos
       name: '@puji4810/dsh-study'
 
     - id: tikz
       name: '@puji4810/dsh-tikz'
+
+    - id: mermaid
+      name: '@puji4810/dsh-mermaid'

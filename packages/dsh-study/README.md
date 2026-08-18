@@ -27,7 +27,7 @@ The plugin registers two tools on `ctx.tools`:
 
 Both tools return the StudyOS envelope — `{ ok, data?, error?: { code, message, details? }, warnings }` — as their canonical value. Domain failures are `ok: false` values, never thrown exceptions; the stable error codes mirror the Python plugin (`SESSION_NOT_FOUND`, `PROPOSAL_FINGERPRINT_MISMATCH`, `BROKEN_WIKILINKS`, …). The operation shapes for each workflow live in the operation guides returned by `prompt_context.load`, so the two tool schemas stay narrow.
 
-When the `skills` service is composed, the plugin also registers the nine routed StudyOS skills (`study-os`, `study-plan`, `study-organize`, `study-review`, `study-teach`, `study-lesson`, `study-tikz`, `study-assessment`, `study-grill`) plus the three domain-pack skills (`study-engineering`, `study-kaoyan`, `study-research`). Installing `@puji4810/dsh-study` also installs its `@puji4810/dsh-tikz` dependency, which enables TikZ diagrams in the Web client.
+When the `skills` service is composed, the plugin also registers the nine routed StudyOS skills (`study-os`, `study-plan`, `study-organize`, `study-review`, `study-teach`, `study-lesson`, `study-tikz`, `study-assessment`, `study-grill`) plus the three domain-pack skills (`study-engineering`, `study-kaoyan`, `study-research`). Installing `@puji4810/dsh-study` also installs its `@puji4810/dsh-tikz` and `@puji4810/dsh-mermaid` dependencies, which enable TikZ and Mermaid diagrams in the Web client.
 
 ## The Vault
 

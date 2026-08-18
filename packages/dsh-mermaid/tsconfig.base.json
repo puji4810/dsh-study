@@ -1,0 +1,4 @@
+{
+  "extends": "../dsh-study/tsconfig.base.json",
+  "compilerOptions": { "declaration": true }
+}

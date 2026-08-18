@@ -27,7 +27,7 @@ dsh 的依赖按 profile 隔离，因此只需安装到实际使用的 profile�
 
 两个工具都以 StudyOS 信封 — `{ ok, data?, error?: { code, message, details? }, warnings }` — 作为规范返回值。领域失败是 `ok: false` 值而非抛出的异常；稳定错误码与 Python 插件一致（`SESSION_NOT_FOUND`、`PROPOSAL_FINGERPRINT_MISMATCH`、`BROKEN_WIKILINKS`、…）。各工作流的操作形态由 `prompt_context.load` 返回的操作指南承载，因此两个工具 schema 保持窄小。
 
-当 `skills` 服务被组合时，插件还注册九个路由技能（`study-os`、`study-plan`、`study-organize`、`study-review`、`study-teach`、`study-lesson`、`study-tikz`、`study-assessment`、`study-grill`）与三个域包技能（`study-engineering`、`study-kaoyan`、`study-research`）。安装 `@puji4810/dsh-study` 时也会自动安装其 `@puji4810/dsh-tikz` 依赖，从而在 Web 客户端启用 TikZ 图形。
+当 `skills` 服务被组合时，插件还注册九个路由技能（`study-os`、`study-plan`、`study-organize`、`study-review`、`study-teach`、`study-lesson`、`study-tikz`、`study-assessment`、`study-grill`）与三个域包技能（`study-engineering`、`study-kaoyan`、`study-research`）。安装 `@puji4810/dsh-study` 时也会自动安装其 `@puji4810/dsh-tikz` 与 `@puji4810/dsh-mermaid` 依赖，从而在 Web 客户端启用 TikZ 与 Mermaid 图形。
 
 ## Vault
 

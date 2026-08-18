@@ -1,0 +1,39 @@
+{
+  "name": "@puji4810/dsh-mermaid",
+  "version": "0.1.0",
+  "description": "Mermaid code-fence renderer for the DeepSeek Harness web client",
+  "type": "module",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": { "types": "./lib/types/index.d.ts", "default": "./lib/index.js" },
+    "./client": { "types": "./lib/client-types/client/index.d.ts", "default": "./lib/client.js" },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": ["lib/index.js", "lib/client.js", "lib/types/**/*.d.ts", "lib/client-types/**/*.d.ts", "cordis.patch.yml", "README.md", "README.zh.md", "LICENSE"],
+  "scripts": {
+    "build": "pnpm run build:host && pnpm run build:client",
+    "build:host": "tsc -p tsconfig.host.json && tsdown --config tsdown.host.config.ts",
+    "build:client": "tsc -p tsconfig.client.json && tsdown --config tsdown.client.config.ts",
+    "typecheck": "tsc -p tsconfig.host.json --noEmit && tsc -p tsconfig.client.json --noEmit"
+  },
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": { "platform": "web", "inject": [] }
+  },
+  "dependencies": { "mermaid": "^11.16.0" },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-host-webserver": "^0.1.0-rc.5"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-host-webserver": "^0.1.0-rc.5",
+    "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.5",
+    "@types/node": "^24.0.0",
+    "tsdown": "^0.22.2",
+    "typescript": "^6.0.3"
+  }
+}
