@@ -56,10 +56,10 @@ export interface WikilinkGraph {
  * @param raw - the raw file text.
  * @returns frontmatter record, body text, and an optional warning.
  */
-function parseFrontmatter(raw: string): { frontmatter: Record<string, unknown>; body: string; warning: string | null } {
+function parseFrontmatter(raw: string): { frontmatter: Record<string, unknown>; body: string; warning: string | null; hasFrontmatter: boolean } {
   const lines = raw.split(/\r?\n/)
   if (lines.length === 0 || (lines[0] ?? '').trim() !== '---') {
-    return { frontmatter: {}, body: raw, warning: null }
+    return { frontmatter: {}, body: raw, warning: null, hasFrontmatter: false }
   }
   let endIndex: number | null = null
   for (let index = 1; index < lines.length; index += 1) {
@@ -73,21 +73,22 @@ function parseFrontmatter(raw: string): { frontmatter: Record<string, unknown>; 
       frontmatter: {},
       body: lines.slice(1).join('\n'),
       warning: 'Missing closing --- in frontmatter',
+      hasFrontmatter: true,
     }
   }
   const fmText = lines.slice(1, endIndex).join('\n')
   const body = lines.slice(endIndex + 1).join('\n')
   if (fmText.trim().length === 0) {
-    return { frontmatter: {}, body, warning: null }
+    return { frontmatter: {}, body, warning: null, hasFrontmatter: true }
   }
   try {
     const parsed = parseYamlBlock(fmText)
     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return { frontmatter: {}, body, warning: 'Frontmatter is not a mapping' }
+      return { frontmatter: {}, body, warning: 'Frontmatter is not a mapping', hasFrontmatter: true }
     }
-    return { frontmatter: parsed, body, warning: null }
+    return { frontmatter: parsed, body, warning: null, hasFrontmatter: true }
   } catch (error) {
-    return { frontmatter: {}, body, warning: `Failed to parse frontmatter: ${String((error as Error).message ?? error)}` }
+    return { frontmatter: {}, body, warning: `Failed to parse frontmatter: ${String((error as Error).message ?? error)}`, hasFrontmatter: true }
   }
 }
 
@@ -126,10 +127,10 @@ function parseYamlBlock(text: string): Record<string, unknown> | null {
         if (lookLine.startsWith(' ') || lookLine.startsWith('\t')) {
           const itemMatch = /^\s*-\s*(.*)$/.exec(lookLine)
           if (itemMatch !== null) {
-            items.push((itemMatch[1] ?? '').trim())
+            items.push(stripYamlQuotes(itemMatch[1] ?? ''))
           } else {
             const itemValue = /^\s*(.+?)\s*$/.exec(lookLine.trimStart())
-            if (itemValue !== null) items.push(itemValue[1] ?? '')
+            if (itemValue !== null) items.push(stripYamlQuotes(itemValue[1] ?? ''))
           }
           look += 1
           continue
@@ -166,6 +167,21 @@ function parseYamlScalar(value: string): unknown {
   if (text === 'null' || text === '~') return null
   if (/^-?\d+$/.test(text)) return Number(text)
   if (/^-?\d+\.\d+$/.test(text)) return Number(text)
+  return text
+}
+
+/**
+ * Trim a list-block item, stripping one layer of matching surrounding quotes.
+ * Vaults differ in how they quote values like wikilinks (`- "[[x]]"` in one,
+ * bare `- [[x]]` in another); both must yield the same item text.
+ */
+function stripYamlQuotes(value: string): string {
+  const text = value.trim()
+  if (text.length >= 2) {
+    const first = text[0]!
+    const last = text[text.length - 1]!
+    if ((first === '"' || first === "'") && last === first) return text.slice(1, -1)
+  }
   return text
 }
 
@@ -229,14 +245,21 @@ function excerpt(body: string, limit = 260): string {
 }
 
 /**
- * Classify a note into a layer from its relative path and frontmatter.
+ * Classify a note into a layer from its relative path, frontmatter, and
+ * whether the file declares a frontmatter block at all. An explicit `type`
+ * wins; the folder conventions are only a fallback and only for files that
+ * carry a frontmatter block, so bare documentation files (AGENTS.md, README,
+ * ...) that happen to live in an `examples/` or `Box/` folder are not
+ * mistaken for study notes.
  * @param relativePath - the slash-separated path relative to the vault.
  * @param frontmatter - the parsed frontmatter record.
+ * @param hasFrontmatter - whether the file declares a `---` block.
  * @returns one of `note`, `example`, `pattern`, `concept`, or a custom `type`.
  */
-export function layerFrom(relativePath: string, frontmatter: StudyData): string {
+export function layerFrom(relativePath: string, frontmatter: StudyData, hasFrontmatter = true): string {
   const noteType = String(frontmatter.type ?? '').trim()
   if (noteType) return noteType
+  if (!hasFrontmatter) return 'note'
   const relative = relativePath.replace(/\\/g, '/')
   const slashPath = `/${relative}`
   if (slashPath.includes('/examples/') || relative.startsWith('examples/')) return 'example'
@@ -258,7 +281,7 @@ export function parseNoteMarkdown(
   const { path, size, modified } = context
   const basename = path.split('/').pop() ?? path
   const stem = basename.includes('.') ? basename.slice(0, basename.lastIndexOf('.')) : basename
-  const { frontmatter, body, warning } = parseFrontmatter(raw)
+  const { frontmatter, body, warning, hasFrontmatter } = parseFrontmatter(raw)
   const headings = extractHeadings(body)
   const title = String(
     frontmatter.title
@@ -268,7 +291,7 @@ export function parseNoteMarkdown(
     path,
     basename,
     title: title || stem,
-    layer: layerFrom(path, frontmatter),
+    layer: layerFrom(path, frontmatter, hasFrontmatter),
     frontmatter,
     tags: asList(frontmatter.tags),
     concepts: asList(frontmatter.concepts).map(stripWikilink),

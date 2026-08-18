@@ -93,8 +93,8 @@ function recordSummary(path: string, vault: string, idKey: string) {
   return {
     path: relativeToVault(vault, path),
     [idKey]: frontmatter[idKey] ?? stemOf(path),
-    project_id: frontmatter.project_id,
-    status: frontmatter.status,
+    project_id: frontmatter.project_id ?? null,
+    status: frontmatter.status ?? null,
     title: firstHeading(text) ?? stemOf(path),
   }
 }

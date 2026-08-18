@@ -51,13 +51,75 @@ export interface StudyErrEnvelope {
 export type StudyEnvelope = StudyOkEnvelope | StudyErrEnvelope
 
 /**
- * Build an ok envelope.
+ * Recursively normalize a handler payload into lossless JSON. `undefined`
+ * becomes `null` (JSON.stringify silently drops it, and the tool layer rejects
+ * the round trip as `value is not lossless JSON`); anything else a JSON round
+ * trip cannot preserve — NaN/±Infinity, `-0`, BigInt, Symbol, Function, deep
+ * class instances (`Date`/`Map`/`Set`/`RegExp`...), cycles, and sparse arrays —
+ * raises a {@link StudyOSError} naming the failing path. Every handler output
+ * passes through this normalization before it can cross the tool boundary.
+ * @param value - the raw payload value.
+ * @param path - the dotted diagnostic path (for example `$.data.due[0].difficulty`).
+ * @param ancestors - the object identity stack used to detect cycles.
+ * @returns the lossless-equivalent value.
+ */
+export function toLosslessJson(value: unknown, path = '$', ancestors: Set<object> = new Set()): unknown {
+  if (value === undefined) return null
+  if (value === null) return null
+  const type = typeof value
+  if (type === 'boolean' || type === 'string') return value
+  if (type === 'number') {
+    if (Number.isFinite(value) && !Object.is(value, -0)) return value
+    throw new StudyOSError('INVALID_TOOL_OUTPUT', `Envelope value at ${path} is not lossless JSON: ${String(value)}`)
+  }
+  if (type === 'bigint' || type === 'symbol' || type === 'function') {
+    throw new StudyOSError('INVALID_TOOL_OUTPUT', `Envelope value at ${path} is not lossless JSON: ${type}`)
+  }
+  // From here on value is an object.
+  if (ancestors.has(value)) {
+    throw new StudyOSError('INVALID_TOOL_OUTPUT', `Envelope value at ${path} is not lossless JSON: circular reference`)
+  }
+  if (Array.isArray(value)) {
+    // Dense arrays own exactly the indices plus the non-enumerable `length`.
+    if (Reflect.ownKeys(value).length !== value.length + 1) {
+      throw new StudyOSError('INVALID_TOOL_OUTPUT', `Envelope value at ${path} is not lossless JSON: sparse array`)
+    }
+    ancestors.add(value)
+    try {
+      return value.map((item, index) => toLosslessJson(item, `${path}[${index}]`, ancestors))
+    } finally {
+      ancestors.delete(value)
+    }
+  }
+  const prototype = Object.getPrototypeOf(value)
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new StudyOSError(
+      'INVALID_TOOL_OUTPUT',
+      `Envelope value at ${path} is not a plain object: ${(prototype as { constructor?: { name?: string } }).constructor?.name ?? 'unknown prototype'}`,
+    )
+  }
+  ancestors.add(value)
+  try {
+    const out: Record<string, unknown> = {}
+    for (const key of Object.keys(value)) {
+      out[key] = toLosslessJson((value as Record<string, unknown>)[key], `${path}.${key}`, ancestors)
+    }
+    return out
+  } finally {
+    ancestors.delete(value)
+  }
+}
+
+/**
+ * Build an ok envelope. The payload is normalized to lossless JSON so every
+ * envelope this package emits — through the model tools, dashboard bridges, or
+ * remote services — is guaranteed to survive the tool-layer round trip.
  * @param data - the operation payload.
  * @param warnings - optional non-fatal observations.
  * @returns the ok envelope.
  */
 export function ok(data: Record<string, unknown>, warnings: string[] = []): StudyOkEnvelope {
-  return { ok: true, data, warnings }
+  return { ok: true, data: toLosslessJson(data) as Record<string, unknown>, warnings }
 }
 
 /**
@@ -67,7 +129,7 @@ export function ok(data: Record<string, unknown>, warnings: string[] = []): Stud
  */
 export function errFrom(error: StudyOSError): StudyErrEnvelope {
   const value: StudyErrorValue = { code: error.code, message: error.message }
-  if (error.details !== undefined) value.details = error.details
+  if (error.details !== undefined) value.details = toLosslessJson(error.details) as Record<string, unknown>
   return { ok: false, error: value, warnings: [] }
 }
 

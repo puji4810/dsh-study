@@ -259,7 +259,8 @@ describe('handleStudyConcept failure mapping', () => {
     expect(result.data.direct_dependents).toEqual([])
     expect(result.data.exercised_in).toEqual([])
     expect(result.data.note_count).toBe(0)
-    expect(result.data.review_level).toBeUndefined()
+    // The lossless envelope boundary emits null (not undefined) for an absent aggregate.
+    expect(result.data.review_level).toBeNull()
   })
 
   it('collects affected examples through dependents', () => {

@@ -288,7 +288,7 @@ function dueReviews(args: StudyData, env: HandlerEnv): StudyEnvelope {
         next_review_at: state.next_review_at || null,
         concepts: note.concepts ?? [],
         tags: note.tags ?? [],
-        difficulty: frontmatter.difficulty,
+        difficulty: frontmatter.difficulty ?? null,
         subject,
       })
     }

@@ -501,7 +501,7 @@ export class StudyReviewReadModel {
         next_review_at: state.next_review_at || null,
         concepts: note.concepts,
         tags: note.tags,
-        difficulty: frontmatter.difficulty,
+        difficulty: frontmatter.difficulty ?? null,
         subject: noteSubject,
       }
       dueEntries.push({ reviewLevel, lastReviewedAt: state.last_reviewed_at || '0000-00-00', path: note.path })
@@ -594,10 +594,10 @@ export class StudyReviewReadModel {
           path: note.path,
           title: note.title,
           review_level: reviewLevel,
-          difficulty: frontmatter.difficulty,
+          difficulty: frontmatter.difficulty ?? null,
           concepts: note.concepts,
           tags: note.tags,
-          source: frontmatter.source,
+          source: frontmatter.source ?? null,
         })
       }
     }
